@@ -3,13 +3,16 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
-using static System.Runtime.InteropServices.JavaScript.JSType;
+using Microsoft.VisualBasic;
 
 namespace Convention
 {
     // Interface
+
+    public interface ISignal
+    {
+
+    }
 
     public interface IModel
     {
@@ -17,19 +20,23 @@ namespace Convention
         void Load(string data);
     }
 
-    public interface IConvertModel<T> 
-        : IModel
+    public interface IConvertable<T>
     {
         T ConvertTo();
+    }
+
+    public interface IConvertModel<T>
+        : IModel, IConvertable<T>
+    {
     }
 
     // Instance
 
     public class SingletonModel<T>: IModel
     {
-        private static T? InjectInstance = default;
+        private static T InjectInstance = default;
 
-        public static T? Instance
+        public static T Instance
         {
             get => InjectInstance;
             set
@@ -43,7 +50,7 @@ namespace Convention
             }
         }
 
-        public T? Data => InjectInstance;
+        public T Data => InjectInstance;
 
         void IModel.Load(string data)
         {
@@ -63,7 +70,7 @@ namespace Convention
             throw new InvalidOperationException();
         }
 
-        public static implicit operator T?(SingletonModel<T> _) => InjectInstance;
+        public static implicit operator T(SingletonModel<T> _) => InjectInstance;
     }
 
     public class DependenceModel
@@ -118,10 +125,10 @@ namespace Convention
             return type.Assembly + "::" + type.FullName;
         }
 
-        public static Type? LoadFromFormat(string data)
+        public static Type LoadFromFormat(string data)
         {
             var keys = data.Split("::");
-            Assembly? asm = null;
+            Assembly asm = null;
             try
             {
                 asm = Assembly.LoadFrom(keys[0]);
@@ -133,11 +140,11 @@ namespace Convention
             }
         }
 
-        public static Type? LoadFromFormat(string data, out Exception? exception)
+        public static Type LoadFromFormat(string data, out Exception exception)
         {
             exception = null;
             var keys = data.Split("::");
-            Assembly? asm = null;
+            Assembly asm = null;
             try
             {
                 asm = Assembly.LoadFrom(keys[0]);
@@ -149,6 +156,23 @@ namespace Convention
                 return null;
             }
         }
+
+        internal static void InternalReset()
+        {
+            // Register System
+            RegisterHistory.Clear();
+            UncompleteTargets.Clear();
+            Completer.Clear();
+            Dependences.Clear();
+            Childs.Clear();
+            // Event Listener
+            SignalListener.Clear();
+            // Linear Chain for Dependence
+            TimelineQuenes.Clear();
+            TimelineContentID = 0;
+        }
+
+        #region Objects Registered
 
         private class TypeQuery
             : IConvertModel<bool>
@@ -176,11 +200,11 @@ namespace Convention
             }
         }
 
-        private static HashSet<Type> RegisterHistory = new();
-        private static Dictionary<Type, object> UncompleteTargets = new();
-        private static Dictionary<Type, Action> Completer = new();
-        private static Dictionary<Type, DependenceModel> Dependences = new();
-        private static Dictionary<Type, object> Childs = new();
+        private static readonly HashSet<Type> RegisterHistory = new();
+        private static readonly Dictionary<Type, object> UncompleteTargets = new();
+        private static readonly Dictionary<Type, Action> Completer = new();
+        private static readonly Dictionary<Type, DependenceModel> Dependences = new();
+        private static readonly Dictionary<Type, object> Childs = new();
 
         public class Registering : IConvertModel<bool>
         {
@@ -207,7 +231,7 @@ namespace Convention
             }
         }
 
-        private static bool InternalComplete(out HashSet<Type> InternalUpdateBuffer)
+        private static bool InternalRegisteringComplete(out HashSet<Type> InternalUpdateBuffer)
         {
             InternalUpdateBuffer = new();
             bool result = false;
@@ -222,19 +246,22 @@ namespace Convention
             return result;
         }
 
-        private static void InternalUpdate(HashSet<Type> InternalUpdateBuffer)
+        private static void InternalRegisteringUpdate(HashSet<Type> InternalUpdateBuffer)
         {
             foreach (var complete in InternalUpdateBuffer)
             {
                 Dependences.Remove(complete);
-
+            }
+            foreach (var complete in InternalUpdateBuffer)
+            {
+                Completer[complete]();
+                Completer.Remove(complete);
             }
             foreach (var complete in InternalUpdateBuffer)
             {
                 Childs.Add(complete, UncompleteTargets[complete]);
                 UncompleteTargets.Remove(complete);
             }
-            InternalUpdateBuffer.Clear();
         }
 
         public static Registering Register(Type slot, object target, Action completer, params Type[] dependences)
@@ -245,9 +272,9 @@ namespace Convention
             }
             Completer[slot] = completer;
             UncompleteTargets[slot] = target;
-            Dependences[slot] = new DependenceModel(from dependence in dependences select new TypeQuery(dependence));
-            while (InternalComplete(out var buffer))
-                InternalUpdate(buffer);
+            Dependences[slot] = new DependenceModel(from dependence in dependences where dependence != slot select new TypeQuery(dependence));
+            while (InternalRegisteringComplete(out var buffer))
+                InternalRegisteringUpdate(buffer);
             return new Registering(slot);
         }
 
@@ -262,5 +289,124 @@ namespace Convention
         public static object Get(Type type) => InternalGet(type);
 
         public static T Get<T>() => (T)Get(typeof(T));
+
+        #endregion
+
+        #region Signal & Update
+
+        private static readonly Dictionary<Type, HashSet<Action<ISignal>>> SignalListener = new();
+
+        public class Listening
+        {
+            private readonly Action<ISignal> action;
+            private readonly Type type;
+
+            public Listening(Action<ISignal> action, Type type)
+            {
+                this.action = action;
+                this.type = type;
+            }
+
+            public void StopListening()
+            {
+                if (SignalListener.TryGetValue(type, out var actions))
+                    actions.Remove(action);
+            }
+        }
+
+        public static Listening AddListener<Signal>(Type slot, Action<Signal> listener) where Signal : ISignal
+        {
+            if (SignalListener.ContainsKey(slot) == false)
+                SignalListener.Add(slot, new());
+            Action<ISignal> action = x =>
+            {
+                if (x is Signal signal)
+                    listener(signal);
+            };
+            Listening result = new(action, slot);
+            SignalListener[slot].Add(action);
+            return result;
+        }
+
+        public static void SendMessage(Type slot, ISignal signal)
+        {
+            if(SignalListener.TryGetValue(slot,out var actions))
+            {
+                foreach (var action in actions)
+                {
+                    action(signal);
+                }
+            }
+        }
+
+        public static void SendMessage<Signal>(Signal signal) where Signal : ISignal => SendMessage(signal.GetType(), signal);
+
+        #endregion
+
+        #region Timeline/Chain & Update
+
+        private class TimelineQueneEntry
+        {
+            public Func<bool> predicate;
+            public List<Action> actions = new();
+        }
+
+        private class Timeline
+        {
+            public Dictionary<Func<bool>, int> PredicateMapper = new();
+            public List<TimelineQueneEntry> Quene = new();
+            public int Context = 0;
+        }
+
+        private static Dictionary<int, Timeline> TimelineQuenes = new();
+        private static int TimelineContentID = 0;
+
+        public static int CreateTimeline()
+        {
+            TimelineQuenes.Add(TimelineContentID++, new());
+            return TimelineQuenes.Count;
+        }
+
+        public static void AddStep(int timelineId, Func<bool> predicate,params Action[] actions)
+        {
+            var timeline = TimelineQuenes[timelineId];
+            if (timeline.PredicateMapper.TryGetValue(predicate, out var time))
+            {
+                timeline.Quene[time].actions.AddRange(actions);
+            }
+            else
+            {
+                time = timeline.Quene.Count;
+                timeline.PredicateMapper.Add(predicate, time);
+                timeline.Quene.Add(new()
+                {
+                    predicate = predicate,
+                    actions = actions.ToList()
+                });
+            }
+        }
+
+        public static void UpdateTimeline()
+        {
+            foreach (var pair in TimelineQuenes)
+            {
+                var timeline = pair.Value;
+                if(timeline.Quene[timeline.Context].predicate())
+                {
+                    foreach (var action in timeline.Quene[timeline.Context].actions)
+                    {
+                        action();
+                    }
+                    timeline.Context++;
+                }
+            }
+        }
+
+        public static void ResetTimelineContext(int timelineId)
+        {
+            TimelineQuenes[timelineId].Context = 0;
+        }
+
+        #endregion
     }
 }
