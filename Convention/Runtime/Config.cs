@@ -31,6 +31,26 @@ namespace Convention
         {
             return MainThreadID == Thread.CurrentThread.ManagedThreadId;
         }
+
+        //var filePath = Environment.ExpandEnvironmentVariables(@"%USERPROFILE%\AppData\Local\Temp");
+
+        public static string CompanyName = "DefaultCom";
+
+        public static string ProductName = "DefaultProject";
+
+        public static string PersistentDataPath
+        {
+            get
+            {
+                if (IsPlatformWindows)
+                    return Environment.ExpandEnvironmentVariables($@"%userprofile%\AppData\LocalLow\{CompanyName}\{ProductName}\");
+                else if (IsPlatformLinux)
+                    return Environment.ExpandEnvironmentVariables(@"$HOME/.config/");
+                return "";
+            }
+        }
+
+        public static string DataPath => "Assets/";
     }
 
     public static partial class Utility

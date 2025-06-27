@@ -5,44 +5,27 @@ using Convention;
 
 public class Program
 {
-    class Slot1
+    class Vector2
     {
-
+        public double x, y;
     }
-    class Slot2
+    class Vector2X2
     {
-
-    }
-    class Slot3
-    {
-
-    }
-    class Slot4
-    {
-
+        public double x, y;
+        public Vector2 next;
     }
 
     static void Main(string[] args)
     {
-        var seed = new Random(2049);
-        for (int i = 0; i < 100000; i++)
+        EasySave.Save("key", new Vector2X2()
         {
-            Convention.Architecture.InternalReset();
-            var slot1 = new Slot1();
-            var slot2 = new Slot2();
-            var slot3 = new Slot3();
-            var slot4 = new Slot4();
-            List<Action> list = new() {
-                ()=> Convention.Architecture.Register(slot1,()=>{ },typeof(Slot2),typeof(Slot3),typeof(Slot4)),
-                ()=> Convention.Architecture.Register(slot2,()=>{ },typeof(Slot3),typeof(Slot4)),
-                ()=> Convention.Architecture.Register(slot3,()=>{ },typeof(Slot4)),
-                ()=> Convention.Architecture.Register(slot4,()=>{ })};
-            list.Sort((x, y) => seed.Next() > seed.Next() ? 1 : -1);
-            foreach (var item in list)
+            x = 10,
+            y = 20,
+            next = new()
             {
-                item();
+                x = 30,
+                y = 40
             }
-            Console.Write($"{i}\t\r"); 
-        }
+        }, "test.json");
     }
 }
