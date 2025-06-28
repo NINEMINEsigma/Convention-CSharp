@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Threading;
 using Convention;
+using Convention.EasySave;
 
 public class Program
 {
@@ -17,6 +19,8 @@ public class Program
 
     static void Main(string[] args)
     {
+        Directory.CreateDirectory(PlatformIndicator.PersistentDataPath);
+        Console.WriteLine(PlatformIndicator.PersistentDataPath);
         EasySave.Save("key", new Vector2X2()
         {
             x = 10,

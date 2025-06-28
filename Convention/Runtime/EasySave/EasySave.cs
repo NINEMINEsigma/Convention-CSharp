@@ -2,6 +2,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using Convention.EasySave.Internal;
+using Convention.EasySave.Types;
 
 namespace Convention.EasySave
 {
@@ -258,81 +259,6 @@ namespace Convention.EasySave
 
             using (var stream = EasySaveStream.CreateStream(newSettings, EasySaveFileMode.Append))
                 stream.Write(bytes, 0, bytes.Length);
-        }
-
-        /// <summary>Saves a Texture2D as a PNG or JPG, depending on the file extension used for the filePath.</summary>
-        /// <param name="texture">The Texture2D we want to save as a JPG or PNG.</param>
-        /// <param name="imagePath">The relative or absolute path of the PNG or JPG file we want to create.</param>
-        public static void SaveImage(Texture2D texture, string imagePath)
-        {
-            SaveImage(texture, new EasySaveSettings(imagePath));
-        }
-
-        /// <summary>Saves a Texture2D as a PNG or JPG, depending on the file extension used for the filePath.</summary>
-        /// <param name="texture">The Texture2D we want to save as a JPG or PNG.</param>
-        /// <param name="imagePath">The relative or absolute path of the PNG or JPG file we want to create.</param>
-        public static void SaveImage(Texture2D texture, string imagePath, EasySaveSettings settings)
-        {
-            SaveImage(texture, new EasySaveSettings(imagePath, settings));
-        }
-
-        /// <summary>Saves a Texture2D as a PNG or JPG, depending on the file extension used for the filePath.</summary>
-        /// <param name="texture">The Texture2D we want to save as a JPG or PNG.</param>
-        /// <param name="settings">The settings we want to use to override the default settings.</param>
-        public static void SaveImage(Texture2D texture, EasySaveSettings settings)
-        {
-            SaveImage(texture, 75, settings);
-        }
-
-        /// <summary>Saves a Texture2D as a PNG or JPG, depending on the file extension used for the filePath.</summary>
-        /// <param name="texture">The Texture2D we want to save as a JPG or PNG.</param>
-        /// <param name="quality">Quality to encode with, where 1 is minimum and 100 is maximum. Note that this only applies to JPGs.</param>
-        /// <param name="imagePath">The relative or absolute path of the PNG or JPG file we want to create.</param>
-        public static void SaveImage(Texture2D texture, int quality, string imagePath)
-        {
-            SaveImage(texture, quality, new EasySaveSettings(imagePath));
-        }
-
-        /// <summary>Saves a Texture2D as a PNG or JPG, depending on the file extension used for the filePath.</summary>
-        /// <param name="texture">The Texture2D we want to save as a JPG or PNG.</param>
-        /// <param name="quality">Quality to encode with, where 1 is minimum and 100 is maximum. Note that this only applies to JPGs.</param>
-        /// <param name="imagePath">The relative or absolute path of the PNG or JPG file we want to create.</param>
-        public static void SaveImage(Texture2D texture, int quality, string imagePath, EasySaveSettings settings)
-        {
-            SaveImage(texture, quality, new EasySaveSettings(imagePath, settings));
-        }
-
-        /// <summary>Saves a Texture2D as a PNG or JPG, depending on the file extension used for the filePath.</summary>
-        /// <param name="texture">The Texture2D we want to save as a JPG or PNG.</param>
-        /// <param name="quality">Quality to encode with, where 1 is minimum and 100 is maximum. Note that this only applies to JPGs.</param>
-        /// <param name="settings">The settings we want to use to override the default settings.</param>
-        public static void SaveImage(Texture2D texture, int quality, EasySaveSettings settings)
-        {
-            // Get the file extension to determine what format we want to save the image as.
-            string extension = EasySaveIO.GetExtension(settings.path).ToLower();
-            if (string.IsNullOrEmpty(extension))
-                throw new System.ArgumentException("File path must have a file extension when using EasySave.SaveImage.");
-            byte[] bytes;
-            if (extension == ".jpg" || extension == ".jpeg")
-                bytes = texture.EncodeToJPG(quality);
-            else if (extension == ".png")
-                bytes = texture.EncodeToPNG();
-            else
-                throw new System.ArgumentException("File path must have extension of .png, .jpg or .jpeg when using EasySave.SaveImage.");
-
-            EasySave.SaveRaw(bytes, settings);
-        }
-
-
-        /// <summary>Saves a Texture2D as a PNG or JPG, depending on the file extension used for the filePath.</summary>
-        /// <param name="texture">The Texture2D we want to save as a JPG or PNG.</param>
-        /// <param name="quality">Quality to encode with, where 1 is minimum and 100 is maximum. Note that this only applies to JPGs.</param>
-        public static byte[] SaveImageToBytes(Texture2D texture, int quality, EasySave.ImageType imageType)
-        {
-            if (imageType == ImageType.JPEG)
-                return texture.EncodeToJPG(quality);
-            else
-                return texture.EncodeToPNG();
         }
 
         #endregion
@@ -720,7 +646,7 @@ namespace Convention.EasySave
             return Serialize(value, EasySaveTypeMgr.GetOrCreateEasySaveType(typeof(T)), settings);
         }
 
-        internal static byte[] Serialize(object value, Convention.EasySave.Types.EasySaveType type, EasySaveSettings settings = null)
+        internal static byte[] Serialize(object value, EasySaveType type, EasySaveSettings settings = null)
         {
             if (settings == null) settings = new EasySaveSettings();
 
@@ -745,7 +671,7 @@ namespace Convention.EasySave
             return (T)Deserialize(EasySaveTypeMgr.GetOrCreateEasySaveType(typeof(T)), bytes, settings);
         }
 
-        internal static object Deserialize(Convention.EasySave.Types.EasySaveType type, byte[] bytes, EasySaveSettings settings = null)
+        internal static object Deserialize(EasySaveType type, byte[] bytes, EasySaveSettings settings = null)
         {
             if (settings == null)
                 settings = new EasySaveSettings();
@@ -761,7 +687,7 @@ namespace Convention.EasySave
             DeserializeInto(EasySaveTypeMgr.GetOrCreateEasySaveType(typeof(T)), bytes, obj, settings);
         }
 
-        public static void DeserializeInto<T>(Convention.EasySave.Types.EasySaveType type, byte[] bytes, T obj, EasySaveSettings settings = null) where T : class
+        public static void DeserializeInto<T>(EasySaveType type, byte[] bytes, T obj, EasySaveSettings settings = null) where T : class
         {
             if (settings == null)
                 settings = new EasySaveSettings();

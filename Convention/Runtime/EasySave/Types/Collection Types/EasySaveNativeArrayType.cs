@@ -32,7 +32,7 @@ namespace Convention.EasySave.Types
         {
             var array = ReadAsArray(reader);
 
-            return EasySaveReflection.CreateInstance(type, new object[] { array, Allocator.Persistent });
+            return EasySaveReflection.CreateInstance(type, new object[] { array/*, Allocator.Persistent*/ });
         }
 
         public override object Read<T>(EasySaveReader reader)

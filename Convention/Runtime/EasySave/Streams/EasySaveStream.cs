@@ -32,7 +32,7 @@ namespace Convention.EasySave.Internal
 
                 return CreateStream(stream, settings, fileMode);
             }
-            catch(System.Exception e)
+            catch(Exception)
             {
                 if (stream != null)
                     stream.Dispose();

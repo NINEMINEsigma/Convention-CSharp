@@ -88,8 +88,6 @@ namespace Convention.EasySave.Internal
                     es3Type = new EasySaveStackType(type);
                 else if (genericType == typeof(HashSet<>))
                     es3Type = new EasySaveHashSetType(type);
-                else if (genericType == typeof(Unity.Collections.NativeArray<>))
-                    es3Type = new EasySaveNativeArrayType(type);
                 else if (throwException)
                     throw new NotSupportedException("Generic type \"" + type.ToString() + "\" is not supported by Easy Save.");
                 else
@@ -104,20 +102,8 @@ namespace Convention.EasySave.Internal
 			}
 			else
 			{
-                if (EasySaveReflection.IsAssignableFrom(typeof(Component), type))
-                    es3Type = new ES3ReflectedComponentType(type);
-                else if (EasySaveReflection.IsValueType(type))
-                    es3Type = new EasySaveReflectedValueType(type);
-                else if (EasySaveReflection.IsAssignableFrom(typeof(ScriptableObject), type))
-                    es3Type = new ES3ReflectedScriptableObjectType(type);
-                else if (EasySaveReflection.IsAssignableFrom(typeof(UnityEngine.Object), type))
-                    es3Type = new ES3ReflectedUnityObjectType(type);
-                /*else if (EasySaveReflection.HasParameterlessConstructor(type) || EasySaveReflection.IsAbstract(type) || EasySaveReflection.IsInterface(type))
-                    es3Type = new EasySaveReflectedObjectType(type);*/
-                else if (type.Name.StartsWith("Tuple`"))
+                if (type.Name.StartsWith("Tuple`"))
                     es3Type = new EasySaveTupleType(type);
-                /*else if (throwException)
-                    throw new NotSupportedException("Type of " + type + " is not supported as it does not have a parameterless constructor. Only value types, Components or ScriptableObjects are supportable without a parameterless constructor. However, you may be able to create an EasySaveType script to add support for it.");*/
                 else
                     es3Type = new EasySaveReflectedObjectType(type);
             }

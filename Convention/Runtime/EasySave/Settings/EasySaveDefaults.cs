@@ -1,18 +1,23 @@
-﻿public class EasySaveDefaults
+﻿using Convention.EasySave;
+
+namespace Convention.EasySave
 {
-    public EasySaveSerializableSettings settings = new EasySaveSerializableSettings();
+    public class EasySaveDefaults
+    {
+        public EasySaveSettings settings = new EasySaveSerializableSettings();
 
-    public bool addMgrToSceneAutomatically = false;
-    public bool autoUpdateReferences = true;
-    public bool addAllPrefabsToManager = true;
-    public int collectDependenciesDepth = 4;
-    public int collectDependenciesTimeout = 10;
-    public bool updateReferencesWhenSceneChanges = true;
-    public bool updateReferencesWhenSceneIsSaved = true;
-    public bool updateReferencesWhenSceneIsOpened = true;
-    public string[] referenceFolders = new string[0];
+        public bool addMgrToSceneAutomatically = false;
+        public bool autoUpdateReferences = true;
+        public bool addAllPrefabsToManager = true;
+        public int collectDependenciesDepth = 4;
+        public int collectDependenciesTimeout = 10;
+        public bool updateReferencesWhenSceneChanges = true;
+        public bool updateReferencesWhenSceneIsSaved = true;
+        public bool updateReferencesWhenSceneIsOpened = true;
+        public string[] referenceFolders = new string[0];
 
-    public bool logDebugInfo = false;
-    public bool logWarnings = true;
-    public bool logErrors = true;
+        public bool logDebugInfo = false;
+        public bool logWarnings = true;
+        public bool logErrors = true;
+    }
 }

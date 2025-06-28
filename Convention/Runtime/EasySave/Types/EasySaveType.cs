@@ -19,7 +19,6 @@ namespace Convention.EasySave.Types
 		public bool isDictionary = false;
         public bool isTuple = false;
         public bool isEnum = false;
-		public bool isES3TypeUnityObject = false;
 		public bool isReflectedType = false;
 		public bool isUnsupported = false;
         public int priority = 0;
