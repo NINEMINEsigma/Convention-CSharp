@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
@@ -35,6 +36,10 @@ namespace Convention
         public static string CompanyName = "DefaultCompany";
 
         public static string ProductName = "DefaultProject";
+
+        public static string ApplicationPath => Environment.ProcessPath;
+
+        public static string StreamingAssetsPath => Path.Combine(ApplicationPath, "StreamingAssets/");
 
         public static string PersistentDataPath
         {
