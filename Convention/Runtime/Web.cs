@@ -1,61 +1,23 @@
-using UnityEngine;
-using UnityEngine.Networking;
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.IO;
-using System.Text.RegularExpressions;
-using Newtonsoft;
-using Newtonsoft.Json;
+using System.Net.Http;
+using System.Text;
+using System.Text.Json;
+using System.Threading.Tasks;
 
 namespace Convention
 {
     [Serializable]
-    public class ToolURL : LeftValueReference<string>
-#if UNITY_EDITOR
-        , ISerializationCallbackReceiver
-#endif
+    public sealed class ToolURL
     {
-        [System.AttributeUsage(AttributeTargets.All, Inherited = true, AllowMultiple = false)]
-        public class URLAttribute : Attribute
+        private string url;
+        private static readonly HttpClient httpClient = new();
+        private object data;
+
+        public ToolURL(string url)
         {
-            public string[] urlTypes;
-            public URLAttribute(params string[] types)
-            {
-                urlTypes = types;
-            }
-            public URLAttribute(bool IsAnyURL)
-            {
-                if (IsAnyURL)
-                    urlTypes = new string[] { "*" };
-                else
-                    urlTypes = new string[] { };
-            }
-        }
-
-        public static string[] ImageURLTypes = new string[] { "jpg", "jpeg", "png", "gif", "bmp", "webp" };
-        public static string[] AudioURLTypes = new string[] { "mp3", "wav", "ogg", "aac", "m4a" };
-        public static string[] VideoURLTypes = new string[] { "mp4", "webm", "mov", "avi", "mkv" };
-        public static string[] DocumentURLTypes = new string[] { "pdf", "doc", "docx", "txt", "rtf" };
-        public static string[] JsonURLTypes = new string[] { "json" };
-
-        [Content, SerializeField] private string url { get => ref_value; set => ref_value = value; }
-        [Ignore][HideInInspector] public UnityWebRequest WebRequest { get; protected set; }
-        [Content] public object data;
-
-        public ToolURL([In] string url) : base(url) { }
-
-        ~ToolURL()
-        {
-            this.Close();
-        }
-
-        public override string SymbolName()
-        {
-            return
-                $"url<" +
-                $"{(IsValid ? "v" : "-")}" +
-                $">";
+            this.url = url;
         }
 
         public override string ToString()
@@ -63,89 +25,67 @@ namespace Convention
             return this.url;
         }
 
-        public delegate void GetCallback([In] UnityWebRequest request);
-        public bool Get([In] GetCallback callback)
+        #region HTTP Methods
+
+        public async Task<bool> GetAsync(Action<HttpResponseMessage> callback)
         {
             if (!IsValid)
                 return false;
 
-            WebRequest = UnityWebRequest.Get(this.url);
-            WebRequest.SendWebRequest();
-
-            while (!WebRequest.isDone) ;
-
-            callback(WebRequest);
-            return WebRequest.result == UnityWebRequest.Result.Success;
-        }
-
-        public delegate void GetAsyncCallback([In, Opt] UnityWebRequest request);
-        public IEnumerator GetAsync([In] GetAsyncCallback callback)
-        {
-            if (!IsValid)
+            try
+            {
+                var response = await httpClient.GetAsync(this.url);
+                callback(response);
+                return response.IsSuccessStatusCode;
+            }
+            catch
             {
                 callback(null);
-                yield break;
+                return false;
             }
-
-            WebRequest = UnityWebRequest.Get(this.url);
-            WebRequest.SendWebRequest();
-
-            while (!WebRequest.isDone) 
-                yield return null;
-
-            callback(WebRequest);
         }
 
-        public delegate void PostCallback([In] UnityWebRequest request);
-        public delegate UnityWebRequest PostIniter([In]UnityWebRequest request);
-        public bool Post([In] PostCallback callback, [In]WWWForm form)
+        public bool Get(Action<HttpResponseMessage> callback)
+        {
+            return GetAsync(callback).GetAwaiter().GetResult();
+        }
+
+        public async Task<bool> PostAsync(Action<HttpResponseMessage> callback, Dictionary<string, string> formData = null)
         {
             if (!IsValid)
                 return false;
 
-            WebRequest = UnityWebRequest.Post(this.url, form);
-            WebRequest.SendWebRequest();
+            try
+            {
+                HttpContent content = null;
+                if (formData != null)
+                {
+                    content = new FormUrlEncodedContent(formData);
+                }
 
-            while (!WebRequest.isDone) ;
-
-            callback(WebRequest);
-            return WebRequest.result == UnityWebRequest.Result.Success;
-        }
-        public bool Post([In]PostCallback callback, [In]PostIniter initer,  [In]WWWForm form)
-        {
-            if (!IsValid)
-                return false;
-
-            WebRequest = initer(UnityWebRequest.Post(this.url, form));
-            WebRequest.SendWebRequest();
-
-            while (!WebRequest.isDone) ;
-
-            callback(WebRequest);
-            return WebRequest.result == UnityWebRequest.Result.Success;
-        }
-
-        public delegate void PostAsyncCallback([In, Opt] UnityWebRequest request);
-        public IEnumerator PostAsync([In] PostAsyncCallback callback, [In] WWWForm form)
-        {
-            if (!IsValid)
+                var response = await httpClient.PostAsync(this.url, content);
+                callback(response);
+                return response.IsSuccessStatusCode;
+            }
+            catch
             {
                 callback(null);
-                yield break;
+                return false;
             }
-
-            WebRequest = UnityWebRequest.Post(this.url, form);
-            WebRequest.SendWebRequest();
-
-            while (!WebRequest.isDone)
-                yield return null;
-
-            callback(WebRequest);
         }
+
+        public bool Post(Action<HttpResponseMessage> callback, Dictionary<string, string> formData = null)
+        {
+            return PostAsync(callback, formData).GetAwaiter().GetResult();
+        }
+
+        #endregion
 
         #region URL Properties
+
         public string FullURL => this.url;
         public static implicit operator string(ToolURL data) => data.FullURL;
+
         public string GetFullURL()
         {
             return this.url;
@@ -179,10 +119,13 @@ namespace Convention
                     return true;
             return false;
         }
+
         #endregion
 
         #region Validation
+
         public bool IsValid => ValidateURL();
+
         public bool ValidateURL()
         {
             if (string.IsNullOrEmpty(this.url))
@@ -191,451 +134,174 @@ namespace Convention
             return Uri.TryCreate(this.url, UriKind.Absolute, out Uri uriResult)
                 && (uriResult.Scheme == Uri.UriSchemeHttp || uriResult.Scheme == Uri.UriSchemeHttps);
         }
+
         public static implicit operator bool(ToolURL url) => url.IsValid;
+
         #endregion
 
-        public ToolURL Refresh()
-        {
-            this.Close();
-            return this;
-        }
+        #region Load Methods
 
-        public static object LoadObjectFromBinary([In] byte[] data)
+        public async Task<string> LoadAsTextAsync()
         {
-            using MemoryStream fs = new(data, false);
-            return new System.Runtime.Serialization.Formatters.Binary.BinaryFormatter().Deserialize(fs);
-        }
+            if (!IsValid)
+                return null;
 
-        public ToolURL Data2Object()
-        {
-            this.data = LoadObjectFromBinary((byte[])this.data);
-            return this;
-        }
-
-        public ToolURL Data2Bytes()
-        {
-            using MemoryStream ms = new();
-            new System.Runtime.Serialization.Formatters.Binary.BinaryFormatter().Serialize(ms, this.data);
-            var outdata = ms.GetBuffer();
-            this.data = outdata;
-            return this;
-        }
-
-        public bool IsDataByteArray()
-        {
-            return this.data != null && this.data.GetType() == typeof(byte[]);
-        }
-
-        #region Load
-        public object Load()
-        {
-            if (IsText)
-                return this.LoadAsText();
-            else if (IsJson)
-                return LoadAsJson();
-            else if (IsImage)
-                return LoadAsImage();
-            else if (IsAudio)
-                return LoadAsAudio();
-            else if (IsDocument)
-                return LoadAsDocument();
-            else
-                return LoadAsText();
-        }
-
-        public static T LoadFromText<T>([In] string requestText)
-        {
-            return JsonConvert.DeserializeObject<T>(requestText);
-        }
-        [return: ReturnMayNull]
-        public static T LoadFromRequest<T>([In] UnityWebRequest request)
-        {
-            while (!request.isDone) ;
-
-            return request.result == UnityWebRequest.Result.Success
-                ? LoadFromText<T>(request.downloadHandler.text)
-                : default;
-        }
-        [return: ReturnNotNull]
-        public static T LoadFromRequestNotNull<T>([In] UnityWebRequest request) where T : class, new()
-        {
-            while (!request.isDone) ;
-
-            return request.result == UnityWebRequest.Result.Success
-                ? LoadFromText<T>(request.downloadHandler.text)
-                : new();
-        }
-        [return: ReturnMayNull]
-        public static IEnumerator LoadFromRequestAsync<T>([In] UnityWebRequest request,[In]Action<T> callback)
-        {
-            while (!request.isDone)
-            {
-                yield return null;
-            }
-
-            callback(request.result == UnityWebRequest.Result.Success
-                ? LoadFromText<T>(request.downloadHandler.text)
-                : default);
-        }
-        [return: ReturnNotNull]
-        public static IEnumerator LoadFromRequestNotNullAsync<T>([In] UnityWebRequest request, [In] Action<T> callback) where T : class, new()
-        {
-            while (!request.isDone)
-            {
-                yield return null;
-            }
-
-            callback(request.result == UnityWebRequest.Result.Success
-                ? LoadFromText<T>(request.downloadHandler.text)
-                : new());
-        }
-
-        public object LoadAsJson()
-        {
-            return LoadAsJsonWithType<object>();
-        }
-
-        public T LoadAsJsonWithType<T>()
-        {
-            string jsonText = LoadAsText();
             try
             {
-                T result = JsonConvert.DeserializeObject<T>(jsonText);
-                this.data = result;
-                return result;
+                var response = await httpClient.GetAsync(this.url);
+                if (response.IsSuccessStatusCode)
+                {
+                    this.data = await response.Content.ReadAsStringAsync();
+                    return (string)this.data;
+                }
             }
-            catch (Exception)
+            catch
             {
-                Debug.Log(jsonText);
-                return default;
+                // 请求失败
             }
-        }
 
-        public T LoadAsJsonWithType<T>(T whenThrow)
-        {
-            string jsonText = LoadAsText();
-            try
-            {
-                T result = JsonConvert.DeserializeObject<T>(jsonText);
-                this.data = result;
-                return result;
-            }
-            catch (Exception)
-            {
-                Debug.Log(jsonText);
-                return whenThrow;
-            }
+            return null;
         }
 
         public string LoadAsText()
         {
+            return LoadAsTextAsync().GetAwaiter().GetResult();
+        }
+
+        public async Task<byte[]> LoadAsBinaryAsync()
+        {
             if (!IsValid)
                 return null;
 
-            WebRequest = UnityWebRequest.Get(this.url);
-            WebRequest.SendWebRequest();
-
-            while (!WebRequest.isDone)
+            try
             {
-                // 等待请求完成
+                var response = await httpClient.GetAsync(this.url);
+                if (response.IsSuccessStatusCode)
+                {
+                    this.data = await response.Content.ReadAsByteArrayAsync();
+                    return (byte[])this.data;
+                }
             }
-
-            if (WebRequest.result == UnityWebRequest.Result.Success)
+            catch
             {
-                this.data = WebRequest.downloadHandler.text;
-                return (string)this.data;
+                // 请求失败
             }
 
             return null;
-        }
-
-        public IEnumerator LoadAsTextAsync([In] Action<string> callback)
-        {
-            if (!IsValid)
-            {
-                callback(null);
-                yield break;
-            }
-
-            WebRequest = UnityWebRequest.Get(this.url);
-            yield return WebRequest.SendWebRequest();
-
-            if (WebRequest.result == UnityWebRequest.Result.Success)
-            {
-                this.data = WebRequest.downloadHandler.text;
-                callback((string)this.data);
-            }
-            else
-            {
-                callback(null);
-            }
         }
 
         public byte[] LoadAsBinary()
         {
-            if (!IsValid)
-                return null;
-
-            WebRequest = UnityWebRequest.Get(this.url);
-            WebRequest.SendWebRequest();
-
-            while (!WebRequest.isDone)
-            {
-                // 等待请求完成
-            }
-
-            if (WebRequest.result == UnityWebRequest.Result.Success)
-            {
-                this.data = WebRequest.downloadHandler.data;
-                return (byte[])this.data;
-            }
-
-            return null;
+            return LoadAsBinaryAsync().GetAwaiter().GetResult();
         }
 
-        public IEnumerator LoadAsBinaryAsync([In] Action<byte[]> callback)
+        public T LoadAsJson<T>()
         {
-            if (!IsValid)
-            {
-                callback(null);
-                yield break;
-            }
+            string jsonText = LoadAsText();
+            if (string.IsNullOrEmpty(jsonText))
+                return default(T);
 
-            WebRequest = UnityWebRequest.Get(this.url);
-            yield return WebRequest.SendWebRequest();
-
-            if (WebRequest.result == UnityWebRequest.Result.Success)
+            try
             {
-                this.data = WebRequest.downloadHandler.data;
-                callback((byte[])this.data);
+                T result = JsonSerializer.Deserialize<T>(jsonText);
+                this.data = result;
+                return result;
             }
-            else
+            catch
             {
-                callback(null);
+                return default(T);
             }
         }
 
-        public Texture2D LoadAsImage()
+        public async Task<T> LoadAsJsonAsync<T>()
         {
-            if (!IsValid)
-                return null;
+            string jsonText = await LoadAsTextAsync();
+            if (string.IsNullOrEmpty(jsonText))
+                return default(T);
 
-            WebRequest = UnityWebRequestTexture.GetTexture(this.url);
-            WebRequest.SendWebRequest();
-
-            while (!WebRequest.isDone)
+            try
             {
-                // 等待请求完成
+                T result = JsonSerializer.Deserialize<T>(jsonText);
+                this.data = result;
+                return result;
             }
-
-            if (WebRequest.result == UnityWebRequest.Result.Success)
+            catch
             {
-                this.data = DownloadHandlerTexture.GetContent(WebRequest);
-                return (Texture2D)this.data;
-            }
-
-            return null;
-        }
-
-        public IEnumerator LoadAsImageAsync([In] Action<Texture2D> callback)
-        {
-            if (!IsValid)
-            {
-                callback(null);
-                yield break;
-            }
-
-            WebRequest = UnityWebRequestTexture.GetTexture(this.url);
-            yield return WebRequest.SendWebRequest();
-
-            if (WebRequest.result == UnityWebRequest.Result.Success)
-            {
-                this.data = DownloadHandlerTexture.GetContent(WebRequest);
-                callback((Texture2D)this.data);
-            }
-            else
-            {
-                callback(null);
+                return default(T);
             }
         }
 
-        public AudioClip LoadAsAudio()
-        {
-            if (!IsValid)
-                return null;
-
-            WebRequest = UnityWebRequestMultimedia.GetAudioClip(this.url, GetAudioType());
-            WebRequest.SendWebRequest();
-
-            while (!WebRequest.isDone)
-            {
-                // 等待请求完成
-            }
-
-            if (WebRequest.result == UnityWebRequest.Result.Success)
-            {
-                this.data = DownloadHandlerAudioClip.GetContent(WebRequest);
-                return (AudioClip)this.data;
-            }
-
-            return null;
-        }
-
-        public IEnumerator LoadAsAudioAsync([In] Action<AudioClip> callback)
-        {
-            if (!IsValid)
-            {
-                callback(null);
-                yield break;
-            }
-
-            WebRequest = UnityWebRequestMultimedia.GetAudioClip(this.url, GetAudioType());
-            yield return WebRequest.SendWebRequest();
-
-            if (WebRequest.result == UnityWebRequest.Result.Success)
-            {
-                this.data = DownloadHandlerAudioClip.GetContent(WebRequest);
-                callback((AudioClip)this.data);
-            }
-            else
-            {
-                callback(null);
-            }
-        }
-
-        public byte[] LoadAsDocument()
-        {
-            return LoadAsBinary();
-        }
-
-        public IEnumerator LoadAsDocumentAsync([In] Action<byte[]> callback)
-        {
-            yield return LoadAsBinaryAsync(callback);
-        }
-
-        public object LoadAsUnknown()
-        {
-            this.data = this.LoadAsBinary();
-            return this;
-        }
         #endregion
 
-        #region Save
-        public void Save([In][Opt] string localPath = null)
+        #region Save Methods
+
+        public void Save(string localPath = null)
         {
             if (IsText)
                 SaveAsText(localPath);
             else if (IsJson)
                 SaveAsJson(localPath);
-            else if (IsImage)
-                SaveAsImage(localPath);
-            else if (IsAudio)
-                SaveAsAudio(localPath);
-            else if (IsVideo)
-                SaveAsVideo(localPath);
-            else if (IsDocument)
-                SaveAsDocument(localPath);
             else
                 SaveAsBinary(localPath);
         }
 
-        public void SaveAsJson([In][Opt] string localPath = null)
+        public void SaveAsText(string localPath = null)
         {
             if (localPath == null)
             {
-                localPath = Path.Combine(Application.temporaryCachePath, GetFilename());
+                localPath = Path.Combine(Path.GetTempPath(), GetFilename());
             }
 
-            string jsonText = JsonConvert.SerializeObject(this.data);
-            File.WriteAllText(localPath, jsonText);
+            if (this.data is string text)
+            {
+                File.WriteAllText(localPath, text);
+            }
         }
 
-        public void SaveAsText([In][Opt] string localPath = null)
+        public void SaveAsJson(string localPath = null)
         {
             if (localPath == null)
             {
-                localPath = Path.Combine(Application.temporaryCachePath, GetFilename());
+                localPath = Path.Combine(Path.GetTempPath(), GetFilename());
             }
 
-            File.WriteAllText(localPath, (string)this.data);
+            if (this.data != null)
+            {
+                string jsonText = JsonSerializer.Serialize(this.data);
+                File.WriteAllText(localPath, jsonText);
+            }
         }
 
-        public void SaveAsBinary([In][Opt] string localPath = null)
+        public void SaveAsBinary(string localPath = null)
         {
             if (localPath == null)
             {
-                localPath = Path.Combine(Application.temporaryCachePath, GetFilename());
+                localPath = Path.Combine(Path.GetTempPath(), GetFilename());
             }
 
-            File.WriteAllBytes(localPath, (byte[])this.data);
-        }
-
-        public void SaveAsImage([In][Opt] string localPath = null)
-        {
-            if (localPath == null)
+            if (this.data is byte[] bytes)
             {
-                localPath = Path.Combine(Application.temporaryCachePath, GetFilename());
+                File.WriteAllBytes(localPath, bytes);
             }
-
-            Texture2D texture = (Texture2D)this.data;
-            byte[] bytes = texture.EncodeToPNG();
-            File.WriteAllBytes(localPath, bytes);
         }
 
-        public void SaveAsAudio([In][Opt] string localPath = null)
-        {
-            // 注意：Unity不直接支持将AudioClip保存为文件
-            // 这里只是一个示例，实际应用中可能需要其他方法
-            Debug.LogWarning("Direct saving of AudioClip to file is not supported in Unity");
-        }
-
-        public void SaveAsVideo([In][Opt] string localPath = null)
-        {
-            // 注意：Unity不直接支持将VideoClip保存为文件
-            // 这里只是一个示例，实际应用中可能需要其他方法
-            Debug.LogWarning("Direct saving of VideoClip to file is not supported in Unity");
-        }
-
-        public void SaveAsDocument([In][Opt] string localPath = null)
-        {
-            SaveAsBinary(localPath);
-        }
         #endregion
 
-        public static AudioType GetAudioType(string url)
-        {
-            return Path.GetExtension(url) switch
-            {
-                "ogg" => AudioType.OGGVORBIS,
-                "mp2" => AudioType.MPEG,
-                "mp3" => AudioType.MPEG,
-                "mod" => AudioType.MOD,
-                "wav" => AudioType.WAV,
-                "aif" => AudioType.IT,
-                _ => AudioType.UNKNOWN
-            };
-        }
-
-        public AudioType GetAudioType()
-        {
-            return GetAudioType(this.url);
-        }
-
         #region URL Types
+
         public bool IsText => ExtensionIs("txt", "html", "htm", "css", "js", "xml", "csv");
-        public bool IsJson => ExtensionIs(JsonURLTypes);
-        public bool IsImage => ExtensionIs(ImageURLTypes);
-        public bool IsAudio => ExtensionIs(AudioURLTypes);
-        public bool IsVideo => ExtensionIs(VideoURLTypes);
-        public bool IsDocument => ExtensionIs(DocumentURLTypes);
+        public bool IsJson => ExtensionIs("json");
+        public bool IsImage => ExtensionIs("jpg", "jpeg", "png", "gif", "bmp", "svg");
+        public bool IsDocument => ExtensionIs("pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx");
+
         #endregion
 
         #region Operators
-        [return: ReturnNotNull, ReturnNotSelf]
-        public static ToolURL operator |([In] ToolURL left, [In] string rightPath)
+
+        public static ToolURL operator |(ToolURL left, string rightPath)
         {
             string baseUrl = left.GetFullURL();
-            if (baseUrl.EndsWith("/"))
+            if (baseUrl.EndsWith('/'))
             {
                 return new ToolURL(baseUrl + rightPath);
             }
@@ -645,90 +311,45 @@ namespace Convention
             }
         }
 
-        public ToolURL Open([In] string url)
+        public ToolURL Open(string url)
         {
             this.url = url;
             return this;
         }
 
-        public ToolURL Close()
-        {
-            if (WebRequest != null)
-            {
-                WebRequest.Dispose();
-                WebRequest = null;
-            }
-            return this;
-        }
-
-        public ToolURL Download([In][Opt] string localPath = null)
+        public async Task<ToolURL> DownloadAsync(string localPath = null)
         {
             if (!IsValid)
                 return this;
 
             if (localPath == null)
             {
-                localPath = Path.Combine(Application.temporaryCachePath, GetFilename());
+                localPath = Path.Combine(Path.GetTempPath(), GetFilename());
             }
 
-            WebRequest = UnityWebRequest.Get(this.url);
-            WebRequest.SendWebRequest();
-
-            while (!WebRequest.isDone)
+            try
             {
-                // 等待请求完成
+                var response = await httpClient.GetAsync(this.url);
+                if (response.IsSuccessStatusCode)
+                {
+                    var bytes = await response.Content.ReadAsByteArrayAsync();
+                    await File.WriteAllBytesAsync(localPath, bytes);
+                }
             }
-
-            if (WebRequest.result == UnityWebRequest.Result.Success)
+            catch
             {
-                File.WriteAllBytes(localPath, WebRequest.downloadHandler.data);
+                // 下载失败
             }
 
             return this;
         }
 
-        public IEnumerator DownloadAsync([In] Action<bool> callback, [In][Opt] string localPath = null)
+        public ToolURL Download(string localPath = null)
         {
-            if (!IsValid)
-            {
-                callback(false);
-                yield break;
-            }
-
-            if (localPath == null)
-            {
-                localPath = Path.Combine(Application.temporaryCachePath, GetFilename());
-            }
-
-            WebRequest = UnityWebRequest.Get(this.url);
-            yield return WebRequest.SendWebRequest();
-
-            if (WebRequest.result == UnityWebRequest.Result.Success)
-            {
-                File.WriteAllBytes(localPath, WebRequest.downloadHandler.data);
-                callback(true);
-            }
-            else
-            {
-                callback(false);
-            }
+            return DownloadAsync(localPath).GetAwaiter().GetResult();
         }
+
         #endregion
-
-#if UNITY_EDITOR
-        [SerializeField, ToolURL.URL] private string m_URL;
-        public void OnBeforeSerialize()
-        {
-            m_URL = this.FullURL;
-        }
-
-        public void OnAfterDeserialize()
-        {
-            if (m_URL != this.FullURL)
-            {
-                this.url = m_URL;
-            }
-        }
-#endif
     }
 }
+
