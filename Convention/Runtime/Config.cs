@@ -32,9 +32,7 @@ namespace Convention
             return MainThreadID == Thread.CurrentThread.ManagedThreadId;
         }
 
-        //var filePath = Environment.ExpandEnvironmentVariables(@"%USERPROFILE%\AppData\Local\Temp");
-
-        public static string CompanyName = "DefaultCom";
+        public static string CompanyName = "DefaultCompany";
 
         public static string ProductName = "DefaultProject";
 

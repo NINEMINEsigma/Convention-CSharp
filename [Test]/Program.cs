@@ -30,6 +30,6 @@ public class Program
                 x = 30,
                 y = 40
             }
-        }, "test.json");
+        }, "./test.json");
     }
 }
