@@ -318,11 +318,11 @@ namespace Convention
         {
             if (SignalListener.ContainsKey(slot) == false)
                 SignalListener.Add(slot, new());
-            Action<ISignal> action = x =>
+            void action(ISignal x)
             {
                 if (x is Signal signal)
                     listener(signal);
-            };
+            }
             Listening result = new(action, slot);
             SignalListener[slot].Add(action);
             return result;
