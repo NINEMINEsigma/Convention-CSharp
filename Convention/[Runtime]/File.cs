@@ -11,7 +11,7 @@ namespace Convention
     {
         private string FullPath;
         private FileSystemInfo OriginInfo;
-        private FileStream OriginControlStream;
+        public FileStream OriginControlStream { get; private set; }
         public ToolFile(string path) 
         {
             FullPath = path;
