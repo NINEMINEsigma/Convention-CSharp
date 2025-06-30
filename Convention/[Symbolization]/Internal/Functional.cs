@@ -6,11 +6,13 @@ using System.Threading.Tasks;
 
 namespace Convention.Symbolization.Internal
 {
-    public class Function : Variable
+    public abstract class Function : Variable
     {
-        public Variable Invoke(Variable[] parameters)
+        public readonly FunctionSymbol FunctionInfo;
+        public abstract Variable Invoke(Variable[] parameters);
+        public Function(string symbolName, Type returnType, Type[] parameterTypes, Modification[] modifiers)
         {
-
+            FunctionInfo = new(symbolName, returnType, parameterTypes, modifiers);
         }
     }
 

@@ -6,9 +6,9 @@ using System.Threading.Tasks;
 
 namespace Convention.Symbolization.Internal
 {
-    public class Variable
+    public abstract class Variable : ICloneable
     {
-
+        public abstract object Clone();
     }
 
     public readonly struct VariableSymbol

@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace Convention.Symbolization.Internal
 {
-    public class Modification : Variable
+    public abstract class Modification : Variable
     {
     }
 }
