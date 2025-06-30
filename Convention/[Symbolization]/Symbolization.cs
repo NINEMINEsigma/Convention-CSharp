@@ -6,52 +6,26 @@ using System.Threading.Tasks;
 
 namespace Convention.Symbolization
 {
-    public sealed class SymbolizationContext
+    public class SymbolizationContext
     {
-        public SymbolizationContext() { }
-        public SymbolizationContext(SymbolizationContext forward)
-        {
-            ParentContext = forward;
-        }
-
-        private readonly SymbolizationContext ParentContext;
-
-        public void Execute(string commandsBlock)
-        {
-
-        }
+        public Internal.VariableContext Context = new();
     }
 
-    public sealed class SymbolizationCore
+    public class SymbolizationRunner
     {
-        internal SymbolizationCore(Internal.Reader reader)
+        private readonly SymbolizationContext Context;
+
+        public SymbolizationRunner(SymbolizationContext context)
+        {
+            Context = context;
+        }
+        public SymbolizationRunner() :this(new()){ }
+
+        public void Execute(string funcName)
         {
 
         }
 
-        public SymbolizationContext Context { get; private set; }
-
-    }
-
-    public static class Symbolization
-    {
-        public static SymbolizationCore Build(string file)
-        {
-            return new SymbolizationCore(new(file));
-        }
-
-        public static SymbolizationContext Execute(string commandsBlock)
-        {
-            SymbolizationContext context = new();
-            context.Execute(commandsBlock);
-            return context;
-        }
-
-        public static SymbolizationContext Execute(SymbolizationContext forward,string commandsBlock)
-        {
-            SymbolizationContext context = new(forward);
-            context.Execute(commandsBlock);
-            return context;
-        }
+        public void Execute()=>Execute("main")
     }
 }
