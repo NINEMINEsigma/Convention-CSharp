@@ -8,24 +8,20 @@ namespace Convention.Symbolization
 {
     public class SymbolizationContext
     {
-        public Internal.VariableContext Context = new();
+
     }
 
     public class SymbolizationRunner
     {
+        private readonly Internal.Namespace GlobalNamespace;
         private readonly SymbolizationContext Context;
 
         public SymbolizationRunner(SymbolizationContext context)
         {
+            GlobalNamespace = new();
             Context = context;
         }
         public SymbolizationRunner() :this(new()){ }
 
-        public void Execute(string funcName)
-        {
-
-        }
-
-        public void Execute()=>Execute("main")
     }
 }

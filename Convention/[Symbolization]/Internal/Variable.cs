@@ -6,9 +6,36 @@ using System.Threading.Tasks;
 
 namespace Convention.Symbolization.Internal
 {
-    public abstract class Variable : ICloneable
+    public abstract class Variable : ICloneable, IEquatable<Variable>
     {
+        public readonly VariableSymbol SymbolInfo;
+
+        /// <summary>
+        /// for construct
+        /// </summary>
+        protected Variable(string symbolName, Type variableType)
+        {
+            SymbolInfo = new VariableSymbol(symbolName, variableType);
+        }
+        /// <summary>
+        /// for clone
+        /// </summary>
+        protected Variable(string symbolName, Variable variable) : this(symbolName, variable.SymbolInfo.VariableType) { }
+
         public abstract object Clone();
+        public abstract bool Equals(Variable other);
+
+        public override bool Equals(object obj)
+        {
+            return obj is Variable variable && Equals(variable);
+        }
+
+        public abstract int GetVariableHashCode();
+
+        public override sealed int GetHashCode()
+        {
+            return GetVariableHashCode();
+        }
     }
 
     public readonly struct VariableSymbol

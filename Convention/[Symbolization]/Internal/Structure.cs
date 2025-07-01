@@ -30,5 +30,15 @@ namespace Convention.Symbolization.Internal
             }
             return target;
         }
+
+        public bool Equals(Structure other)
+        {
+            return Name.Equals(other.Name);
+        }
+
+        public override int GetHashCode()
+        {
+            return Name.GetHashCode();
+        }
     }
 }
