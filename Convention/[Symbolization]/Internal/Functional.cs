@@ -18,7 +18,7 @@ namespace Convention.Symbolization.Internal
 
     public readonly struct FunctionSymbol
     {
-        public readonly string SymbolName;
+        public readonly string FunctionName;
         public readonly Type ReturnType;
         public readonly Type[] ParameterTypes;
         public readonly Modification[] Modifiers;
@@ -26,7 +26,7 @@ namespace Convention.Symbolization.Internal
 
         public FunctionSymbol(string symbolName, Type returnType, Type[] parameterTypes, Modification[] modifiers)
         {
-            this.SymbolName = symbolName;
+            this.FunctionName = symbolName;
             this.ReturnType = returnType;
             this.ParameterTypes = parameterTypes;
             this.Modifiers = modifiers;

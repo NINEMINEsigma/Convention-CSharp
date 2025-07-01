@@ -1,42 +1,71 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Convention.Symbolization.Internal
 {
-    public abstract class Variable : ICloneable, IEquatable<Variable>
+    public abstract class Variable : IEquatable<Variable>
     {
         public readonly VariableSymbol SymbolInfo;
 
-        /// <summary>
-        /// for construct
-        /// </summary>
-        protected Variable(string symbolName, Type variableType)
+        protected Variable(VariableSymbol symbolInfo)
         {
-            SymbolInfo = new VariableSymbol(symbolName, variableType);
+            this.SymbolInfo = symbolInfo;
         }
-        /// <summary>
-        /// for clone
-        /// </summary>
-        protected Variable(string symbolName, Variable variable) : this(symbolName, variable.SymbolInfo.VariableType) { }
 
-        public abstract object Clone();
         public abstract bool Equals(Variable other);
 
         public override bool Equals(object obj)
         {
-            return obj is Variable variable && Equals(variable);
+            return Equals(obj as Variable);
         }
 
-        public abstract int GetVariableHashCode();
+        public override int GetHashCode()
+        {
+            return base.GetHashCode();
+        }
+    }
+
+
+    public abstract class Variable<T> : Variable, IEquatable<T>
+    {
+        protected Variable(string symbolName) : base(new VariableSymbol(symbolName, typeof(T))) { }
+        public abstract bool Equals(T other);
+
+        public override bool Equals(Variable other)
+        {
+            return other is T variable && Equals(variable);
+        }
+
+        public override bool Equals(object obj)
+        {
+            return obj is T variable && Equals(variable);
+        }
+
+        public virtual int GetVariableHashCode()
+        {
+            return base.GetHashCode();
+        }
 
         public override sealed int GetHashCode()
         {
             return GetVariableHashCode();
         }
     }
+
+    public abstract class CloneableVariable<T> : Variable<T>, ICloneable
+    {
+        protected CloneableVariable(string symbolName, Type variableType) : base(symbolName)
+        {
+        }
+
+        protected CloneableVariable(string symbolName, CloneableVariable<T> variable) : base(symbolName)
+        {
+        }
+
+        public object Clone() => CloneVariable();
+
+        public abstract T CloneVariable();
+    }
+
 
     public readonly struct VariableSymbol
     {
@@ -58,10 +87,5 @@ namespace Convention.Symbolization.Internal
         {
             return new Tuple<string, Type>(SymbolName, VariableType).GetHashCode();
         }
-    }
-
-    public class VariableContext
-    {
-        public Dictionary<VariableSymbol, Variable> Variables = new();
     }
 }
