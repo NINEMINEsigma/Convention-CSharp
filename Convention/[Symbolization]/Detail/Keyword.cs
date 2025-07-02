@@ -14,8 +14,6 @@ namespace Convention.Symbolization.Internal
         }
 
         public static readonly Dictionary<string, Keyword> Keywords = new();
-
-        public abstract SymbolizationContext Execute(SymbolizationContext context, Variable[] leftParameters, Variable[] rightParameters);
     }
 
     public abstract class Keyword<T> : Keyword where T:Keyword<T>,new()
@@ -44,114 +42,103 @@ namespace Convention.Symbolization.Internal
 
 namespace Convention.Symbolization.Keyword
 {
+    /// <summary>
+    /// <b><see langword="import"/> namespace-expression</b>
+    /// </summary>
+    public sealed class Import : Internal.Keyword<Import>
+    {
+        public Import() : base("import")
+        {
+        }
+    }
+
+    /// <summary>
+    /// <b><see langword="namespace"/> name</b>
+    /// </summary>
     public sealed class Namespace : Internal.Keyword<Namespace>
     {
         public Namespace() : base("namespace")
         {
         }
-        public override SymbolizationContext Execute(SymbolizationContext context, Internal.Variable[] leftParameters, Internal.Variable[] rightParameters)
+    }
+
+    /// <summary>
+    /// <b><see langword="def"/> FunctionName(type1 arg1, type args...) -> return-type</b>
+    /// </summary>
+    public sealed class FunctionDef : Internal.Keyword<FunctionDef>
+    {
+        public FunctionDef() : base("def")
         {
-            if (leftParameters.Length != 0)
-                throw new InvalidGrammarException($"{this}: has invalid subject");
-            if (rightParameters.Length != 1)
-                throw new InvalidGrammarException($"{this}: needs to have one and only one object");
-            Internal.Namespace subNamespace = context.CurrentNamespace.CreateOrGetSubNamespace(rightParameters[0].ToString());
-            subNamespace.BeginUpdate();
-            SymbolizationContext subContext = new(context, subNamespace);
-            return subContext;
         }
     }
 
+    /// <summary>
+    /// <b><see langword="return"/> symbol</b>
+    /// </summary>
     public sealed class Return : Internal.Keyword<Return>
     {
         public Return() : base("return")
         {
         }
+    }
 
-        public override SymbolizationContext Execute(SymbolizationContext context, Internal.Variable[] leftParameters, Internal.Variable[] rightParameters)
+    /// <summary>
+    /// <b><see langword="if"/>(bool-expression)</b>
+    /// </summary>
+    public sealed class If : Internal.Keyword<If>
+    {
+        public If() : base("if")
         {
-            if (leftParameters.Length != 0)
-                throw new InvalidGrammarException($"{this}: has invalid subject");
-            if (rightParameters.Length > 1)
-                throw new InvalidGrammarException($"{this}: has invalid object");
-            // Inject return command to context
-            return context;
         }
     }
 
+    /// <summary>
+    /// <b><see langword="if"/> expression <see langword="else"/> expression</b>
+    /// </summary>
+    public sealed class Else : Internal.Keyword<Else>
+    {
+        public Else() : base("else")
+        {
+        }
+    }
+
+    /// <summary>
+    /// <b><see langword="while"/>(bool-expression)</b>
+    /// </summary>
     public sealed class While : Internal.Keyword<While>
     {
         public While() : base("while")
         {
         }
-        public override SymbolizationContext Execute(SymbolizationContext context, Internal.Variable[] leftParameters, Internal.Variable[] rightParameters)
-        {
-            if (leftParameters.Length != 0)
-                throw new InvalidGrammarException($"{this}: needs to have one and only one subject");
-            if (rightParameters.Length != 1)
-                throw new InvalidGrammarException($"{this}: has invalid object");
-            SymbolizationContext subContext
-            return context;
-        }
     }
 
+    /// <summary>
+    /// <b><see langword="break"/></b>
+    /// </summary>
     public sealed class Break : Internal.Keyword<Break>
     {
         public Break() : base("break")
         {
         }
-        public override SymbolizationContext Execute(SymbolizationContext context, Internal.Variable[] leftParameters, Internal.Variable[] rightParameters)
-        {
-            if (leftParameters.Length != 0)
-                throw new InvalidGrammarException($"{this}: has invalid subject");
-            if (rightParameters.Length != 0)
-                throw new InvalidGrammarException($"{this}: has invalid object");
-            return context;
-        }
     }
 
+    /// <summary>
+    /// <b><see langword="continue"/></b>
+    /// </summary>
     public sealed class Continue : Internal.Keyword<Continue>
     {
         public Continue() : base("continue")
         {
         }
-        public override SymbolizationContext Execute(SymbolizationContext context, Internal.Variable[] leftParameters, Internal.Variable[] rightParameters)
-        {
-            if (leftParameters.Length != 0)
-                throw new InvalidGrammarException($"{this}: has invalid subject");
-            if (rightParameters.Length != 0)
-                throw new InvalidGrammarException($"{this}: has invalid object");
-            return context;
-        }
     }
 
+    /// <summary>
+    /// <b><see langword="struct"/> structureName</b>
+    /// </summary>
     public sealed class Structure : Internal.Keyword<Structure>
     {
         public Structure() : base("struct")
         {
-        }
-
-        public override SymbolizationContext Execute(SymbolizationContext context, Internal.Variable[] leftParameters, Internal.Variable[] rightParameters)
-        {
-            if (leftParameters.Length != 0)
-                throw new InvalidGrammarException($"{this}: has invalid subject");
-            if (rightParameters.Length != 1)
-                throw new InvalidGrammarException($"{this}: needs to have one and only one object");
-            return context;
-        }
-
-        public sealed class Function : Internal.Keyword<Function>
-        {
-            public Function() : base("def")
-            {
-            }
-
-            public override SymbolizationContext Execute(SymbolizationContext context, Internal.Variable[] leftParameters, Internal.Variable[] rightParameters)
-            {
-                if (leftParameters.Length != 0)
-                    throw new InvalidGrammarException($"{this}: has invalid subject");
-
-            }
         }
     }
 }
