@@ -45,7 +45,7 @@ namespace Convention.Symbolization.Internal
             Structures.Add(structure.SymbolInfo.SymbolName, structure);
         }
 
-        public void EndAndApplyUpdate()
+        public void EndAndTApplyUpdate()
         {
             Updateable--;
             if (Updateable == 0)

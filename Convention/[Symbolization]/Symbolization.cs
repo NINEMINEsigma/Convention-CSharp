@@ -8,7 +8,17 @@ namespace Convention.Symbolization
 {
     public class SymbolizationContext
     {
+        public SymbolizationContext() : this(null, Internal.Namespace.CreateRootNamespace()) { }
+        public SymbolizationContext(SymbolizationContext parent) : this(parent, parent.CurrentNamespace) { }
+        public SymbolizationContext(SymbolizationContext parent, Internal.Namespace newNamespace)
+        {
+            this.ParentContext = parent;
+            this.CurrentNamespace = newNamespace;
+        }
 
+        public readonly SymbolizationContext ParentContext;
+        public readonly Dictionary<string, Internal.Variable> Variables = new();
+        public readonly Internal.Namespace CurrentNamespace;
     }
 
     public class SymbolizationRunner
@@ -22,6 +32,19 @@ namespace Convention.Symbolization
             Context = context;
         }
         public SymbolizationRunner() :this(new()){ }
+
+        public Exception Compile()
+        {
+            try
+            {
+
+            }
+            catch (Exception ex)
+            {
+                return ex;
+            }
+            return null;
+        }
 
     }
 }
