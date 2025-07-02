@@ -52,7 +52,7 @@ namespace Convention.EasySave.Internal
                         // This obviously won't work if exceptions are disabled.
                         try
                         {
-                            //if (assemblyNames.Contains(assembly.GetName().Name))
+                            //if (assemblyNames.Contains(assembly.GetName().StructureName))
                                 assemblyList.Add(assembly);
                         }
                         catch { }

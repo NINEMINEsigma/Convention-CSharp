@@ -6,39 +6,82 @@ using System.Threading.Tasks;
 
 namespace Convention.Symbolization.Internal
 {
-    public sealed class Structure : Variable
+    public sealed class Structure : Variable<Structure>, ICanFindVariable
     {
-        public readonly string Name;
-        private Dictionary<VariableSymbol, Variable> VariableSymbolAndDefaultValue;
+        private Dictionary<string, Variable> MemberFields;
+        public readonly Namespace ParentNamespace;
 
-        private Structure(string name)
+        public Dictionary<string, Variable> CloneMemberFields()
         {
-            this.Name = name;
-        }
-        public Structure(string name, Dictionary<VariableSymbol, Variable> variableSymbolAndDefaultValue)
-        {
-            this.Name = name;
-            this.VariableSymbolAndDefaultValue = variableSymbolAndDefaultValue;
+            return new(from pair in MemberFields
+                       select new KeyValuePair<string, Variable>(
+                           pair.Key,
+                           pair.Value is ICloneable cloneable ? (cloneable.Clone() as Variable) : pair.Value)
+                       );
         }
 
-        public override object Clone()
+        private Structure(string symbolName, Namespace parentNamespace) : base(symbolName)
         {
-            Structure target = new(Name);
-            foreach (var pair in VariableSymbolAndDefaultValue)
+            this.ParentNamespace = parentNamespace;
+        }
+
+        public static Structure Create(string structureName, Namespace parent)
+        {
+            Structure result = new(structureName, parent);
+            parent.AddStructure(result);
+            return result;
+        }
+
+        public override bool Equals(Structure other)
+        {
+            return this == other;
+        }
+
+        public Variable[] Find(string symbolName)
+        {
+            if (MemberFields.TryGetValue(symbolName, out var variable))
             {
-                target.VariableSymbolAndDefaultValue[pair.Key] = pair.Value;
+                return new[] { variable };
             }
-            return target;
+            return Array.Empty<Variable>();
+        }
+    }
+
+    public sealed class StructureInstance : CloneableVariable<StructureInstance>,ICanFindVariable
+    {
+        public readonly Structure StructureType;
+        private readonly Dictionary<string, Variable> MemberFields;
+        public StructureInstance(string symbolName, Structure structureType)
+            : base(symbolName)
+        {
+            this.StructureType = structureType;
+            this.MemberFields = structureType.CloneMemberFields();
+        }
+        public override bool Equals(StructureInstance other)
+        {
+            return this == other;
+        }
+        public override StructureInstance CloneVariable(string targetSymbolName)
+        {
+            return new StructureInstance(targetSymbolName, this.StructureType);
         }
 
-        public bool Equals(Structure other)
+        public Variable GetField(string memberName)
         {
-            return Name.Equals(other.Name);
+            if (MemberFields.TryGetValue(memberName, out var result))
+                return result;
+            else
+                throw new KeyNotFoundException($"Member '{memberName}' not found in structure '{StructureType.SymbolInfo.SymbolName}'.");
         }
 
-        public override int GetHashCode()
+        public Variable[] Find(string symbolName)
         {
-            return Name.GetHashCode();
+            if (MemberFields.TryGetValue(symbolName, out var variable))
+            {
+                return new[] { variable };
+            }
+            return Array.Empty<Variable>();
         }
     }
 }
+

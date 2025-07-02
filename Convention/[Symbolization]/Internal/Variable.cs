@@ -51,21 +51,38 @@ namespace Convention.Symbolization.Internal
         }
     }
 
-    public abstract class CloneableVariable<T> : Variable<T>, ICloneable
+    public interface ICanFindVariable
     {
-        protected CloneableVariable(string symbolName, Type variableType) : base(symbolName)
-        {
-        }
-
-        protected CloneableVariable(string symbolName, CloneableVariable<T> variable) : base(symbolName)
-        {
-        }
-
-        public object Clone() => CloneVariable();
-
-        public abstract T CloneVariable();
+        public Variable[] Find(string symbolName);
     }
 
+    public abstract class CloneableVariable<T> : Variable<T>, ICloneable
+    {
+        protected CloneableVariable(string symbolName) : base(symbolName)
+        {
+        }
+
+        public object Clone() => CloneVariable(SymbolInfo.SymbolName);
+
+        public abstract T CloneVariable(string targetSymbolName);
+    }
+
+    public sealed class NullVariable : CloneableVariable<NullVariable>
+    {
+        public NullVariable(string symbolName) : base(symbolName)
+        {
+        }
+
+        public override NullVariable CloneVariable(string targetSymbolName)
+        {
+            return new(targetSymbolName);
+        }
+
+        public override bool Equals(NullVariable other)
+        {
+            return true;
+        }
+    }
 
     public readonly struct VariableSymbol
     {

@@ -18,7 +18,7 @@ namespace Convention.Symbolization
 
         public SymbolizationRunner(SymbolizationContext context)
         {
-            GlobalNamespace = new();
+            GlobalNamespace = Internal.Namespace.CreateRootNamespace();
             Context = context;
         }
         public SymbolizationRunner() :this(new()){ }
