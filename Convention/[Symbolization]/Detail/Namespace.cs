@@ -45,11 +45,12 @@ namespace Convention.Symbolization.Internal
             Structures.Add(structure.SymbolInfo.SymbolName, structure);
         }
 
-        public void EndAndTApplyUpdate()
+        public bool EndAndTApplyUpdate()
         {
             Updateable--;
             if (Updateable == 0)
                 Refresh();
+            return Updateable == 0;
         }
 
         private readonly Dictionary<string, int> SymbolCounter = new();

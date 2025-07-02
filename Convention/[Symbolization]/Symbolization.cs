@@ -19,6 +19,11 @@ namespace Convention.Symbolization
         public readonly SymbolizationContext ParentContext;
         public readonly Dictionary<string, Internal.Variable> Variables = new();
         public readonly Internal.Namespace CurrentNamespace;
+
+        public SymbolizationContext Compile()
+        {
+            return this;
+        }
     }
 
     public class SymbolizationRunner

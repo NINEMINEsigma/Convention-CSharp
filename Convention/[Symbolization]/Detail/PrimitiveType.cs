@@ -49,5 +49,9 @@ namespace Convention.Symbolization.Primitive
         {
             return this.Value.Equals(other.Value);
         }
+        public override string ToString()
+        {
+            return Value.ToString();
+        }
     }
 }

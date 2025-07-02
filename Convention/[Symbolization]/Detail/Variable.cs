@@ -22,6 +22,10 @@ namespace Convention.Symbolization.Internal
         {
             return base.GetHashCode();
         }
+        public override string ToString()
+        {
+            return SymbolInfo.SymbolName;
+        }
     }
 
 
