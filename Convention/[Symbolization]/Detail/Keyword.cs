@@ -53,7 +53,7 @@ namespace Convention.Symbolization.Keyword
     }
 
     /// <summary>
-    /// <b><see langword="namespace"/> name</b>
+    /// <b><see langword="namespace"/> name { ... }</b>
     /// </summary>
     public sealed class Namespace : Internal.Keyword<Namespace>
     {
@@ -63,7 +63,7 @@ namespace Convention.Symbolization.Keyword
     }
 
     /// <summary>
-    /// <b><see langword="def"/> FunctionName(type1 arg1, type args...) -> return-type</b>
+    /// <b><see langword="def"/> FunctionName(parameter-list) -> return-type { ... return return-type-instance; }</b>
     /// </summary>
     public sealed class FunctionDef : Internal.Keyword<FunctionDef>
     {
@@ -73,7 +73,7 @@ namespace Convention.Symbolization.Keyword
     }
 
     /// <summary>
-    /// <b><see langword="return"/> symbol</b>
+    /// <b><see langword="return"/> symbol;</b>
     /// </summary>
     public sealed class Return : Internal.Keyword<Return>
     {
@@ -83,7 +83,7 @@ namespace Convention.Symbolization.Keyword
     }
 
     /// <summary>
-    /// <b><see langword="if"/>(bool-expression)</b>
+    /// <b><see langword="if"/>(bool-expression) expression</b>
     /// </summary>
     public sealed class If : Internal.Keyword<If>
     {
@@ -103,7 +103,7 @@ namespace Convention.Symbolization.Keyword
     }
 
     /// <summary>
-    /// <b><see langword="while"/>(bool-expression)</b>
+    /// <b><see langword="while"/>(bool-expression) expression</b>
     /// </summary>
     public sealed class While : Internal.Keyword<While>
     {
@@ -113,7 +113,7 @@ namespace Convention.Symbolization.Keyword
     }
 
     /// <summary>
-    /// <b><see langword="break"/></b>
+    /// <b><see langword="break"/>;</b>
     /// </summary>
     public sealed class Break : Internal.Keyword<Break>
     {
@@ -123,7 +123,7 @@ namespace Convention.Symbolization.Keyword
     }
 
     /// <summary>
-    /// <b><see langword="continue"/></b>
+    /// <b><see langword="continue"/>;</b>
     /// </summary>
     public sealed class Continue : Internal.Keyword<Continue>
     {
@@ -133,7 +133,7 @@ namespace Convention.Symbolization.Keyword
     }
 
     /// <summary>
-    /// <b><see langword="struct"/> structureName</b>
+    /// <b><see langword="struct"/> structureName { ... }</b>
     /// </summary>
     public sealed class Structure : Internal.Keyword<Structure>
     {

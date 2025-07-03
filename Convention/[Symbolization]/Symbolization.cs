@@ -17,6 +17,8 @@ namespace Convention.Symbolization
         }
 
         public readonly SymbolizationContext ParentContext;
+        public readonly Dictionary<int, List<Internal.Variable>> ScriptWords = new();
+        public readonly Dictionary<int, List<Internal.Variable>> ScriptCommands = new();
         public readonly Dictionary<string, Internal.Variable> Variables = new();
         public readonly Internal.Namespace CurrentNamespace;
 
