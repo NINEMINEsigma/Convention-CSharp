@@ -43,7 +43,7 @@ namespace Convention.Symbolization.Internal
 namespace Convention.Symbolization.Keyword
 {
     /// <summary>
-    /// <b><see langword="import"/> namespace-expression</b>
+    /// <b><see langword="import"/> file</b>
     /// </summary>
     public sealed class Import : Internal.Keyword<Import>
     {

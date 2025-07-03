@@ -45,7 +45,7 @@ namespace Convention.EasySave.Types
 			{
 				if(!reader.StartReadCollectionItem())
 					break;
-				stack.Push(reader.Read<T>(elementType));
+				stack.CompleteLine(reader.Read<T>(elementType));
 				if(reader.EndReadCollectionItem())
 					break;
 			}

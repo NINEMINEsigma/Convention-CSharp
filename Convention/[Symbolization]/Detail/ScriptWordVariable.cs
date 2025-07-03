@@ -6,7 +6,7 @@
 
         public ScriptWordVariable(string word) : base("")
         {
-            this.word = word;
+            this.word = (string)word.Clone();
         }
 
         public override ScriptWordVariable CloneVariable(string targetSymbolName)
@@ -19,20 +19,9 @@
             return other is not null && word.Equals(other.word);
         }
 
-        public Keyword GetKeyword()
+        public override string ToString()
         {
-            if(Keyword.Keywords.TryGetValue(word, out var keyword))
-                return keyword;
-            return null;
-        }
-
-        public Variable GetVariable(SymbolizationContext context)
-        {
-            if (context.Variables.TryGetValue(word, out var variable))
-            {
-                return variable;
-            }
-            return null;
+            return word;
         }
     }
 }

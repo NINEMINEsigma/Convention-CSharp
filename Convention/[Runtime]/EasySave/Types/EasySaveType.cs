@@ -126,7 +126,7 @@ namespace Convention.EasySave.Types
                         }
                         else if (type == typeof(EasySaveStackType))
                         {
-                            var method = baseType.type.GetMethod("Push");
+                            var method = baseType.type.GetMethod("CompleteLine");
                             foreach (var item in loaded)
                                 method.Invoke(obj, new object[] { item });
                         }

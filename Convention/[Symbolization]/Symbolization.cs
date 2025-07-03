@@ -1,56 +1,17 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
 namespace Convention.Symbolization
 {
-    public class SymbolizationContext
-    {
-        public SymbolizationContext() : this(null, Internal.Namespace.CreateRootNamespace()) { }
-        public SymbolizationContext(SymbolizationContext parent) : this(parent, parent.CurrentNamespace) { }
-        public SymbolizationContext(SymbolizationContext parent, Internal.Namespace newNamespace)
-        {
-            this.ParentContext = parent;
-            this.CurrentNamespace = newNamespace;
-        }
-
-        public readonly SymbolizationContext ParentContext;
-        public readonly Dictionary<int, List<Internal.Variable>> ScriptWords = new();
-        public readonly Dictionary<int, List<Internal.Variable>> ScriptCommands = new();
-        public readonly Dictionary<string, Internal.Variable> Variables = new();
-        public readonly Internal.Namespace CurrentNamespace;
-
-        public SymbolizationContext Compile()
-        {
-            return this;
-        }
-    }
-
     public class SymbolizationRunner
     {
-        private readonly Internal.Namespace GlobalNamespace;
-        private readonly SymbolizationContext Context;
+        private SymbolizationContext Context;
 
-        public SymbolizationRunner(SymbolizationContext context)
+        public void Compile(string path)
         {
-            GlobalNamespace = Internal.Namespace.CreateRootNamespace();
-            Context = context;
-        }
-        public SymbolizationRunner() :this(new()){ }
-
-        public Exception Compile()
-        {
-            try
-            {
-
-            }
-            catch (Exception ex)
-            {
-                return ex;
-            }
-            return null;
+            Context = new();
+            Context.Compile(new ToolFile(path));
         }
 
     }

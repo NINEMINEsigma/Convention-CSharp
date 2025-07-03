@@ -4,32 +4,25 @@ using System.IO;
 using System.Threading;
 using Convention;
 using Convention.EasySave;
+using Convention.Symbolization;
 
 public class Program
 {
-    class Vector2
-    {
-        public double x, y;
-    }
-    class Vector2X2
-    {
-        public double x, y;
-        public Vector2 next;
-    }
-
     static void Main(string[] args)
     {
-        Directory.CreateDirectory(PlatformIndicator.PersistentDataPath);
-        Console.WriteLine(PlatformIndicator.PersistentDataPath);
-        EasySave.Save("key", new Vector2X2()
+        // Create a new SymbolizationContext
+        var context = new SymbolizationContext();
+        // Compile a script from a file
+        var toolFile = new ToolFile("example_script.txt");
+        try
         {
-            x = 10,
-            y = 20,
-            next = new()
-            {
-                x = 30,
-                y = 40
-            }
-        }, "./test.json");
+            context.Compile(toolFile);
+            Console.WriteLine("Script compiled successfully.");
+        }
+        catch (FileNotFoundException ex)
+        {
+            Console.WriteLine($"Error: {ex.Message}");
+            toolFile.Create();
+        }
     }
 }

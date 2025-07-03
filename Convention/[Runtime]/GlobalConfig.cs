@@ -16,7 +16,6 @@ namespace Convention
 
         public static void GenerateEmptyConfigJson(ToolFile file)
         {
-            file.Open(System.IO.FileMode.CreateNew);
             file.SaveAsRawJson<Dictionary<string, object>>(new()
             {
                 { "properties",new Dictionary<string, object>() }
@@ -71,12 +70,9 @@ namespace Convention
             var file = DataDir | path;
             if (file.Exists())
             {
-                try
-                {
-                    file.Open(System.IO.FileMode.Create);
-                    return true;
-                }
-                catch (Exception) { }
+                file.Delete();
+                file.Create();
+                return true;
             }
             return false;
         }

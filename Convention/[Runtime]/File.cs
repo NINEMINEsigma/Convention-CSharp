@@ -11,7 +11,6 @@ namespace Convention
     {
         private string FullPath;
         private FileSystemInfo OriginInfo;
-        public FileStream OriginControlStream { get; private set; }
         public ToolFile(string path) 
         {
             FullPath = path;
@@ -127,19 +126,10 @@ namespace Convention
         }
         private void SaveAsText(string data)
         {
-            if (OriginControlStream != null && OriginControlStream.CanWrite)
-            {
-                using var sw = new StreamWriter(OriginControlStream);
-                sw.Write(data);
-                sw.Flush();
-            }
-            else
-            {
-                using var fs = new FileStream(FullPath, FileMode.CreateNew, FileAccess.Write);
-                using var sw = new StreamWriter(fs);
-                sw.Write(data);
-                sw.Flush();
-            }
+            using var fs = new FileStream(FullPath, FileMode.CreateNew, FileAccess.Write);
+            using var sw = new StreamWriter(fs);
+            sw.Write(data);
+            sw.Flush();
         }
         public static void SaveDataAsBinary(string path,  byte[] outdata, FileStream Stream = null)
         {
@@ -158,7 +148,7 @@ namespace Convention
 
         public void SaveAsBinary(byte[] data)
         {
-            SaveDataAsBinary(FullPath, data, OriginControlStream);
+            SaveDataAsBinary(FullPath, data, (OriginInfo as FileInfo).OpenWrite());
         }
 
         #endregion
@@ -201,15 +191,8 @@ namespace Convention
             Refresh();
             return this;
         }
-        public ToolFile Open(FileMode mode)
-        {
-            this.Close();
-            OriginControlStream = new FileStream(this.FullPath, mode);
-            return this;
-        }
         public ToolFile Close()
         {
-            OriginControlStream?.Close();
             return this;
         }
         public ToolFile Create()
