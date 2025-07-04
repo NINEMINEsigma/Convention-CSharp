@@ -1,34 +1,31 @@
 ﻿using System;
+using System.IO;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Convention.Symbolization.Internal
 {
-    public abstract class Keyword : Variable
+    public abstract class Keyword : CloneableVariable<Keyword>
     {
-        protected Keyword(string keyword, Type realType) : base(new(keyword, realType))
+        protected Keyword(string keyword) : base(keyword)
         {
-            Keywords.Add(keyword, this);
+            Keywords.TryAdd(keyword, this);
         }
 
         public static readonly Dictionary<string, Keyword> Keywords = new();
+
+        public override bool Equals(Keyword other)
+        {
+            return this.GetType() == other.GetType();
+        }
+
+        public abstract Keyword ControlContext(SymbolizationContext context, ScriptWordVariable next);
     }
 
-    public abstract class Keyword<T> : Keyword where T:Keyword<T>,new()
+    public abstract class Keyword<T> : Keyword where T : Keyword<T>, new()
     {
         private static T MyInstance = new();
 
-        public static T Instance
-        {
-            get
-            {
-                return MyInstance;
-            }
-        }
-
-        protected Keyword(string keyword) : base(keyword, typeof(T))
+        protected Keyword(string keyword) : base(keyword)
         {
         }
 
@@ -50,6 +47,36 @@ namespace Convention.Symbolization.Keyword
         public Import() : base("import")
         {
         }
+
+        public override Internal.Keyword CloneVariable(string targetSymbolName)
+        {
+            return new Import();
+        }
+
+        private ToolFile ImportFile = new("./");
+        private string buffer = "";
+
+        public override Internal.Keyword ControlContext(SymbolizationContext context, Internal.ScriptWordVariable next)
+        {
+            if (next.word == ";")
+            {
+                var importContext = new SymbolizationContext(context);
+                importContext.Compile(ImportFile);
+                return null;
+            }
+            else if(next.word==".")
+            {
+                ImportFile = ImportFile | buffer;
+                buffer = "";
+                if (ImportFile.Exists() == false)
+                    throw new FileNotFoundException($"File path not found: {ImportFile}", ImportFile);
+            }
+            else
+            {
+                buffer += next.word;
+            }
+            return this;
+        }
     }
 
     /// <summary>
@@ -63,7 +90,7 @@ namespace Convention.Symbolization.Keyword
     }
 
     /// <summary>
-    /// <b><see langword="def"/> FunctionName(parameter-list) -> return-type { ... return return-type-instance; }</b>
+    /// <b><see langword="def"/> FunctionName(parameter-list) return-type { ... return return-type-instance; }</b>
     /// </summary>
     public sealed class FunctionDef : Internal.Keyword<FunctionDef>
     {

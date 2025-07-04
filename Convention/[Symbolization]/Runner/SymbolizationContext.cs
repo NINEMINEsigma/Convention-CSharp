@@ -15,8 +15,6 @@ namespace Convention.Symbolization
         }
 
         private readonly SymbolizationContext ParentContext;
-        private Dictionary<int, List<Internal.Variable>> ScriptWords;
-        public readonly Dictionary<int, List<Internal.Variable>> ScriptCommands = new();
         public readonly Internal.Namespace CurrentNamespace;
 
         public void Compile(string allText)
@@ -25,9 +23,9 @@ namespace Convention.Symbolization
             Internal.SymbolizationReader reader = new();
             foreach (char ch in allText)
                 reader.ReadChar(ch);
-            ScriptWords = reader.ScriptWords;
-            // Turn the script words into commands
-            // TODO
+            var ScriptWords = reader.ScriptWords;
+            // Turn the script words into scope words
+            reader.CompleteScopeWord(this);
         }
 
         public void Compile(ToolFile file)
