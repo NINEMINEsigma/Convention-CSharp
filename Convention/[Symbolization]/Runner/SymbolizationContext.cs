@@ -17,15 +17,21 @@ namespace Convention.Symbolization
         private readonly SymbolizationContext ParentContext;
         public readonly Internal.Namespace CurrentNamespace;
 
+
+        public void Compile(Dictionary<int, Dictionary<int, Internal.Variable>> scriptWords)
+        {
+        }
+
+
         public void Compile(string allText)
         {
             // Create a new reader to parse the script words
             Internal.SymbolizationReader reader = new();
             foreach (char ch in allText)
                 reader.ReadChar(ch);
-            var ScriptWords = reader.ScriptWords;
+            var scriptWords = reader.ScriptWords;
             // Turn the script words into scope words
-            reader.CompleteScopeWord(this);
+            this.Compile(scriptWords);
         }
 
         public void Compile(ToolFile file)

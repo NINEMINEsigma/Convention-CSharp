@@ -13,7 +13,7 @@ namespace Convention.Symbolization.Internal
         private string buffer = "";
         private int lineContext = 1;
         private bool isOutOfStringline = true;
-        public Dictionary<int, List<Variable>> ScriptWords = new() { { 1, new() } };
+        public Dictionary<int, Dictionary<int, Variable>> ScriptWords = new() { { 1, new() } };
 
         private static HashSet<char> ControllerCharSet = new()
         {
@@ -76,11 +76,11 @@ namespace Convention.Symbolization.Internal
                 }
                 if (Internal.Keyword.Keywords.TryGetValue(buffer, out var keyword))
                 {
-                    line.Add(keyword.Clone() as Internal.Variable);
+                    line.Add(line.Count + 1, keyword.Clone() as Internal.Variable);
                 }
                 else
                 {
-                    line.Add(new ScriptWordVariable(buffer));
+                    line.Add(line.Count + 1, new ScriptWordVariable(buffer));
                 }
                 buffer = "";
             }
@@ -127,7 +127,7 @@ namespace Convention.Symbolization.Internal
                     }
                     else
                     {
-                        currentKey = currentKey.ControlContext(rootContext, word);
+                        currentKey = currentKey.ControlContext(rootContext, line.Key, word.Key, word.Value);
                     }
                     wordCounter++;
                 }

@@ -18,7 +18,14 @@ namespace Convention.Symbolization.Internal
             return this.GetType() == other.GetType();
         }
 
-        public abstract Keyword ControlContext(SymbolizationContext context, ScriptWordVariable next);
+        public virtual Keyword ControlContext(SymbolizationContext context, int line, int wordIndex, Variable next)
+        {
+            return ControlContext(context, next);
+        }
+        protected virtual Keyword ControlContext(SymbolizationContext context, Variable next)
+        {
+            return null;
+        }
     }
 
     public abstract class Keyword<T> : Keyword where T : Keyword<T>, new()
@@ -56,15 +63,19 @@ namespace Convention.Symbolization.Keyword
         private ToolFile ImportFile = new("./");
         private string buffer = "";
 
-        public override Internal.Keyword ControlContext(SymbolizationContext context, Internal.ScriptWordVariable next)
+        protected override Internal.Keyword ControlContext(SymbolizationContext context, Internal.Variable next)
         {
-            if (next.word == ";")
+            if (next is not Internal.ScriptWordVariable swv)
+            {
+                throw new InvalidGrammarException($"Not expected a key word: {next}");
+            }
+            if (swv.word == ";")
             {
                 var importContext = new SymbolizationContext(context);
                 importContext.Compile(ImportFile);
                 return null;
             }
-            else if(next.word==".")
+            else if (swv.word == ".")
             {
                 ImportFile = ImportFile | buffer;
                 buffer = "";
@@ -73,7 +84,7 @@ namespace Convention.Symbolization.Keyword
             }
             else
             {
-                buffer += next.word;
+                buffer += swv.word;
             }
             return this;
         }
@@ -86,6 +97,57 @@ namespace Convention.Symbolization.Keyword
     {
         public Namespace() : base("namespace")
         {
+        }
+
+        public override Internal.Keyword CloneVariable(string targetSymbolName)
+        {
+            return new Namespace();
+        }
+
+        private enum Pause
+        {
+            Name, Body
+        }
+
+        private Pause pause = Pause.Name;
+        private int layer = 0;
+        private SymbolizationContext bulidingContext = null;
+        private Dictionary<int, Dictionary<int, Internal.Variable>> subScriptWords = new();
+
+        public override Internal.Keyword ControlContext(SymbolizationContext context,int line,int wordIndex, Internal.Variable next)
+        {
+            if (next is not Internal.ScriptWordVariable swv)
+            {
+                throw new InvalidGrammarException($"Not expected a key word: {next}");
+            }
+            if (pause == Pause.Name)
+            {
+                bulidingContext = new(context, context.CurrentNamespace.CreateOrGetSubNamespace(swv.word));
+                bulidingContext.CurrentNamespace.BeginUpdate();
+                pause = Pause.Body;
+            }
+            else
+            {
+                if (swv.word == "{")
+                    layer++;
+                else if (swv.word == "}")
+                    layer--;
+                if (layer == 0)
+                {
+                    bulidingContext.Compile(subScriptWords);
+                    bulidingContext.CurrentNamespace.EndAndTryApplyUpdate();
+                    return null;
+                }
+                else
+                {
+                    if (subScriptWords.TryGetValue(line, out var rline) == false)
+                    {
+                        subScriptWords.Add(line, rline = new());
+                    }
+                    rline.Add(wordIndex, next);
+                }
+            }
+            return this;
         }
     }
 
