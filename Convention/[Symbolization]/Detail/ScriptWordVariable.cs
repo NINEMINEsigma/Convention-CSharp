@@ -2,26 +2,25 @@
 {
     public class ScriptWordVariable : CloneableVariable<ScriptWordVariable>
     {
-        public readonly string word;
+        public string Word => this.SymbolInfo.SymbolName;
 
-        public ScriptWordVariable(string word) : base("")
+        public ScriptWordVariable(string word, int lineIndex, int wordIndex) : base((string)word.Clone(), lineIndex, wordIndex)
         {
-            this.word = (string)word.Clone();
         }
 
-        public override ScriptWordVariable CloneVariable(string targetSymbolName)
+        public override ScriptWordVariable CloneVariable(string targetSymbolName, int lineIndex, int wordIndex)
         {
-            return new ScriptWordVariable(word);
+            return new ScriptWordVariable(Word, lineIndex, wordIndex);
         }
 
         public override bool Equals(ScriptWordVariable other)
         {
-            return other is not null && word.Equals(other.word);
+            return other is not null && Word.Equals(other.Word);
         }
 
         public override string ToString()
         {
-            return word;
+            return Word;
         }
     }
 }

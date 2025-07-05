@@ -4,7 +4,7 @@ namespace Convention.Symbolization.Primitive
 {
     public class PrimitiveType<T> : Internal.Variable
     {
-        public PrimitiveType() : base(new(typeof(T).Name, typeof(T)))
+        public PrimitiveType() : base(new(typeof(T).Name, typeof(T), 0, 0))
         {
         }
 
@@ -34,15 +34,15 @@ namespace Convention.Symbolization.Primitive
         private readonly PrimitiveType<T> MyPrimitiveType = new();
         public T Value;
 
-        public PrimitiveInstance(string symbolName, T value, PrimitiveType<T> primitiveType) : base(symbolName)
+        public PrimitiveInstance(string symbolName,int lineIndex,int wordIndex, T value, PrimitiveType<T> primitiveType) : base(symbolName, lineIndex, wordIndex)
         {
             this.Value = value;
             this.MyPrimitiveType = primitiveType;
         }
 
-        public override PrimitiveInstance<T> CloneVariable(string targetSymbolName)
+        public override PrimitiveInstance<T> CloneVariable(string targetSymbolName, int lineIndex, int wordIndex)
         {
-            return new(targetSymbolName, MyPrimitiveType.CloneValue(this.Value), this.MyPrimitiveType);
+            return new(targetSymbolName, lineIndex, wordIndex, MyPrimitiveType.CloneValue(this.Value), this.MyPrimitiveType);
         }
 
         public override bool Equals(PrimitiveInstance<T> other)

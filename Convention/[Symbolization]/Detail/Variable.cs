@@ -31,7 +31,7 @@ namespace Convention.Symbolization.Internal
 
     public abstract class Variable<T> : Variable, IEquatable<T>
     {
-        protected Variable(string symbolName) : base(new VariableSymbol(symbolName, typeof(T))) { }
+        protected Variable(string symbolName, int lineIndex, int wordIndex) : base(new VariableSymbol(symbolName, typeof(T), lineIndex, wordIndex)) { }
         public abstract bool Equals(T other);
 
         public override bool Equals(Variable other)
@@ -62,24 +62,24 @@ namespace Convention.Symbolization.Internal
 
     public abstract class CloneableVariable<T> : Variable<T>, ICloneable
     {
-        protected CloneableVariable(string symbolName) : base(symbolName)
+        protected CloneableVariable(string symbolName, int lineIndex, int wordIndex) : base(symbolName, lineIndex, wordIndex)
         {
         }
 
-        public object Clone() => CloneVariable(SymbolInfo.SymbolName);
+        public object Clone() => CloneVariable(SymbolInfo.SymbolName, 0, 0);
 
-        public abstract T CloneVariable(string targetSymbolName);
+        public abstract T CloneVariable(string targetSymbolName, int lineIndex, int wordIndex);
     }
 
     public sealed class NullVariable : CloneableVariable<NullVariable>
     {
-        public NullVariable(string symbolName) : base(symbolName)
+        public NullVariable(string symbolName, int lineIndex, int wordIndex) : base(symbolName, lineIndex, wordIndex)
         {
         }
 
-        public override NullVariable CloneVariable(string targetSymbolName)
+        public override NullVariable CloneVariable(string targetSymbolName, int lineIndex, int wordIndex)
         {
-            return new(targetSymbolName);
+            return new(targetSymbolName, lineIndex, wordIndex);
         }
 
         public override bool Equals(NullVariable other)
@@ -90,13 +90,17 @@ namespace Convention.Symbolization.Internal
 
     public readonly struct VariableSymbol
     {
+        public readonly int LineIndex;
+        public readonly int WordIndex;
         public readonly string SymbolName;
         public readonly Type VariableType;
 
-        public VariableSymbol(string symbolName, Type variableType)
+        public VariableSymbol(string symbolName, Type variableType, int lineIndex,int wordIndex)
         {
             this.SymbolName = symbolName;
             this.VariableType = variableType;
+            this.LineIndex = lineIndex;
+            this.WordIndex = wordIndex;
         }
 
         public bool Equals(VariableSymbol other)

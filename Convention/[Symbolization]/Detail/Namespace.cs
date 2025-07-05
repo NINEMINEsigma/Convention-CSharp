@@ -118,10 +118,10 @@ namespace Convention.Symbolization.Internal
 
         public static Namespace CreateRootNamespace()
         {
-            return new("global");
+            return new("global", 0, 0);
         }
 
-        private Namespace(string symbolName) : base(symbolName) { }
+        private Namespace(string symbolName, int lineIndex, int wordIndex) : base(symbolName, lineIndex, wordIndex) { }
 
         public override bool Equals(Namespace other)
         {

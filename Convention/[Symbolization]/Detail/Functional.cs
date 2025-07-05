@@ -8,7 +8,7 @@ namespace Convention.Symbolization.Internal
     {
         public readonly FunctionSymbol FunctionInfo;
 
-        protected Function(string symbolName,string functionName, Type returnType, Type[] parameterTypes) : base(symbolName)
+        protected Function(string symbolName,int lineIndex,int wordIndex,string functionName, Type returnType, Type[] parameterTypes) : base(symbolName, lineIndex, wordIndex)
         {
             FunctionInfo = new(functionName, returnType, parameterTypes);
         }
@@ -19,15 +19,16 @@ namespace Convention.Symbolization.Internal
     {
         public readonly MethodInfo methodInfo;
 
-        public DelegationalFunction(string symbolName, MethodInfo methodInfo)
-            : base(symbolName, methodInfo.Name, methodInfo.ReturnType, methodInfo.GetParameters().ToList().ConvertAll(x => x.ParameterType).ToArray())
+        public DelegationalFunction(string symbolName, int lineIndex, int wordIndex, MethodInfo methodInfo)
+            : base(symbolName, lineIndex, wordIndex,
+                   methodInfo.Name, methodInfo.ReturnType, methodInfo.GetParameters().ToList().ConvertAll(x => x.ParameterType).ToArray())
         {
             this.methodInfo = methodInfo!;
         }
 
-        public override DelegationalFunction CloneVariable(string targetSymbolName)
+        public override DelegationalFunction CloneVariable(string targetSymbolName, int lineIndex, int wordIndex)
         {
-            return new DelegationalFunction(targetSymbolName, methodInfo);
+            return new DelegationalFunction(targetSymbolName, lineIndex, wordIndex, methodInfo);
         }
 
         public override bool Equals(Function other)
@@ -46,13 +47,13 @@ namespace Convention.Symbolization.Internal
 
     public sealed class ScriptFunction : Function
     {
-        public ScriptFunction(string symbolName,
-            string functionName, Type returnType, Type[] parameterTypes) 
-            : base(symbolName, functionName, returnType, parameterTypes)
+        public ScriptFunction(string symbolName, int lineIndex, int wordIndex,
+            string functionName, Type returnType, Type[] parameterTypes)
+            : base(symbolName, lineIndex, wordIndex, functionName, returnType, parameterTypes)
         {
         }
 
-        public override Function CloneVariable(string targetSymbolName)
+        public override Function CloneVariable(string targetSymbolName, int lineIndex, int wordIndex)
         {
             throw new NotImplementedException();
         }

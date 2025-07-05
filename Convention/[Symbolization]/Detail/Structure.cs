@@ -20,14 +20,14 @@ namespace Convention.Symbolization.Internal
                        );
         }
 
-        private Structure(string symbolName, Namespace parentNamespace) : base(symbolName)
+        private Structure(string symbolName, int lineIndex,int wordIndex, Namespace parentNamespace) : base(symbolName, lineIndex, wordIndex)
         {
             this.ParentNamespace = parentNamespace;
         }
 
-        public static Structure Create(string structureName, Namespace parent)
+        public static Structure Create(VariableSymbol symbol, Namespace parent)
         {
-            Structure result = new(structureName, parent);
+            Structure result = new(symbol.SymbolName, symbol.LineIndex, symbol.WordIndex, parent);
             parent.AddStructure(result);
             return result;
         }
@@ -51,8 +51,8 @@ namespace Convention.Symbolization.Internal
     {
         public readonly Structure StructureType;
         private readonly Dictionary<string, Variable> MemberFields;
-        public StructureInstance(string symbolName, Structure structureType)
-            : base(symbolName)
+        public StructureInstance(string symbolName, int lineIndex, int wordIndex, Structure structureType)
+            : base(symbolName, lineIndex, wordIndex)
         {
             this.StructureType = structureType;
             this.MemberFields = structureType.CloneMemberFields();
@@ -61,9 +61,9 @@ namespace Convention.Symbolization.Internal
         {
             return this == other;
         }
-        public override StructureInstance CloneVariable(string targetSymbolName)
+        public override StructureInstance CloneVariable(string targetSymbolName, int lineIndex, int wordIndex)
         {
-            return new StructureInstance(targetSymbolName, this.StructureType);
+            return new StructureInstance(targetSymbolName, lineIndex, wordIndex, this.StructureType);
         }
 
         public Variable GetField(string memberName)

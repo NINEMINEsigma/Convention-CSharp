@@ -6,7 +6,7 @@ namespace Convention.Symbolization.Internal
 {
     public abstract class Keyword : CloneableVariable<Keyword>
     {
-        protected Keyword(string keyword) : base(keyword) { }
+        protected Keyword(string keyword, int lineIndex, int wordIndex) : base(keyword, lineIndex, wordIndex) { }
 
         public static readonly Dictionary<string, Keyword> Keywords = new()
         {
@@ -38,53 +38,48 @@ namespace Convention.Symbolization.Internal
         }
     }
 
-    public abstract class Keyword<T> : Keyword where T : Keyword<T>, new()
+    public abstract class Keyword<T> : Keyword where T : Keyword<T>
     {
-        protected Keyword(string keyword) : base(keyword) { }
+        protected Keyword(string keyword,int lineIndex,int wordIndex) : base(keyword, lineIndex, wordIndex) { }
 
         public override bool Equals(Variable other)
         {
             return other is T;
-        }
-
-        public override Keyword CloneVariable(string targetSymbolName)
-        {
-            return new T();
         }
     }
 }
 
 namespace Convention.Symbolization.Keyword
 {
-    public abstract class SingleKeyword<T> : Internal.Keyword<T> where T : SingleKeyword<T>, new()
+    public abstract class SingleKeyword<T> : Internal.Keyword<T> where T : SingleKeyword<T>
     {
-        protected SingleKeyword(string keyword) : base(keyword)
+        protected SingleKeyword(string keyword,int lineIndex,int wordIndex) : base(keyword, lineIndex, wordIndex)
         {
         }
         protected override bool ControlScope(SymbolizationContext context, Internal.Variable next)
         {
-            if (next is not Internal.ScriptWordVariable swv ||swv.word!=";")
+            if (next is not Internal.ScriptWordVariable swv ||swv.Word!=";")
                 throw new InvalidGrammarException($"Expected ';' but got {next}");
             return true;
         }
     }
 
-    public abstract class SentenceKeyword<T> : Internal.Keyword<T> where T : SentenceKeyword<T>, new()
+    public abstract class SentenceKeyword<T> : Internal.Keyword<T> where T : SentenceKeyword<T>
     {
-        protected SentenceKeyword(string keyword) : base(keyword)
+        protected SentenceKeyword(string keyword,int lineIndex,int wordIndex) : base(keyword, lineIndex, wordIndex)
         {
         }
         protected override bool ControlScope(SymbolizationContext context, Internal.Variable next)
         {
             if (next is not Internal.ScriptWordVariable swv)
-                throw new InvalidGrammarException($"Not expected a key word: {next}");
-            return swv.word != ";";
+                throw new InvalidGrammarException($"Not expected a key Word: {next}");
+            return swv.Word != ";";
         }
     }
 
-    public abstract class NamespaceKeyword<T> : Internal.Keyword<T> where T : NamespaceKeyword<T>, new()
+    public abstract class NamespaceKeyword<T> : Internal.Keyword<T> where T : NamespaceKeyword<T>
     {
-        protected NamespaceKeyword(string keyword) : base(keyword)
+        protected NamespaceKeyword(string keyword,int lineIndex,int wordIndex) : base(keyword, lineIndex, wordIndex)
         {
         }
         private enum Pause
@@ -101,7 +96,7 @@ namespace Convention.Symbolization.Keyword
             {
                 if (next is Internal.ScriptWordVariable swv)
                 {
-                    if (swv.word == "{")
+                    if (swv.Word == "{")
                     {
                         pause = Pause.Body;
                         layer++;
@@ -110,16 +105,16 @@ namespace Convention.Symbolization.Keyword
                 }
                 else
                 {
-                    throw new InvalidGrammarException($"Expected a script word variable for namespace name, but got {next}");
+                    throw new InvalidGrammarException($"Expected a script Word variable for namespace name, but got {next}");
                 }
             }
             else
             {
                 if (next is Internal.ScriptWordVariable swv)
                 {
-                    if (swv.word == "{")
+                    if (swv.Word == "{")
                         layer++;
-                    else if (swv.word == "}")
+                    else if (swv.Word == "}")
                         layer--;
                     if (layer == 0)
                     {
@@ -131,9 +126,9 @@ namespace Convention.Symbolization.Keyword
         }
     }
 
-    public abstract class VerbObjectScopeKeyword<T> : Internal.Keyword<T> where T : VerbObjectScopeKeyword<T>, new()
+    public abstract class VerbObjectScopeKeyword<T> : Internal.Keyword<T> where T : VerbObjectScopeKeyword<T>
     {
-        protected VerbObjectScopeKeyword(string keyword) : base(keyword)
+        protected VerbObjectScopeKeyword(string keyword,int lineIndex,int wordIndex) : base(keyword, lineIndex, wordIndex)
         {
         }
 
@@ -150,15 +145,15 @@ namespace Convention.Symbolization.Keyword
             if (pause == Pause.BeforeExpression)
             {
                 if (next is not Internal.ScriptWordVariable swv)
-                    throw new InvalidGrammarException($"Not expected a key word: {next}");
-                if (swv.word == "(")
+                    throw new InvalidGrammarException($"Not expected a key Word: {next}");
+                if (swv.Word == "(")
                     pause = Pause.Expression;
                 else
                     throw new InvalidGrammarException($"Expected '(' symbol for expression start, but got {next}");
             }
             else if (pause == Pause.Expression)
             {
-                if (next is Internal.ScriptWordVariable swv && swv.word == ")")
+                if (next is Internal.ScriptWordVariable swv && swv.Word == ")")
                 {
                     pause = Pause.BeforeBody;
                 }
@@ -167,7 +162,7 @@ namespace Convention.Symbolization.Keyword
             {
                 if (next is not Internal.ScriptWordVariable swv)
                     throw new InvalidGrammarException($"Not expected keyword for body start, but got {next}");
-                if (swv.word == "{")
+                if (swv.Word == "{")
                 {
                     pause = Pause.Body;
                     layer++;
@@ -179,9 +174,9 @@ namespace Convention.Symbolization.Keyword
             {
                 if (next is Internal.ScriptWordVariable swv)
                 {
-                    if (swv.word == "{")
+                    if (swv.Word == "{")
                         layer++;
-                    else if (swv.word == "}")
+                    else if (swv.Word == "}")
                         layer--;
                     if (layer == 0)
                         return false;
@@ -189,7 +184,7 @@ namespace Convention.Symbolization.Keyword
             }
             else if (pause == Pause.SingleSentence)
             {
-                if (next is Internal.ScriptWordVariable swv && swv.word == ";")
+                if (next is Internal.ScriptWordVariable swv && swv.Word == ";")
                 {
                     return false;
                 }
@@ -203,8 +198,13 @@ namespace Convention.Symbolization.Keyword
     /// </summary>
     public sealed class Import : SentenceKeyword<Import>
     {
-        public Import() : base("import")
+        public Import(int lineIndex,int wordIndex) : base("import",lineIndex,wordIndex)
         {
+        }
+
+        public override Internal.Keyword CloneVariable(string targetSymbolName, int lineIndex, int wordIndex)
+        {
+            return new Import(lineIndex, wordIndex);
         }
     }
 
@@ -213,8 +213,12 @@ namespace Convention.Symbolization.Keyword
     /// </summary>
     public sealed class Namespace : NamespaceKeyword<Namespace>
     {
-        public Namespace() : base("namespace")
+        public Namespace(int lineIndex,int wordIndex) : base("namespace", lineIndex, wordIndex)
         {
+        }
+        public override Internal.Keyword CloneVariable(string targetSymbolName, int lineIndex, int wordIndex)
+        {
+            return new Namespace(lineIndex, wordIndex);
         }
     }
 
@@ -223,8 +227,12 @@ namespace Convention.Symbolization.Keyword
     /// </summary>
     public sealed class FunctionDef : NamespaceKeyword<FunctionDef>
     {
-        public FunctionDef() : base("def")
+        public FunctionDef(int lineIndex,int wordIndex) : base("def", lineIndex, wordIndex)
         {
+        }
+        public override Internal.Keyword CloneVariable(string targetSymbolName, int lineIndex, int wordIndex)
+        {
+            return new FunctionDef(lineIndex, wordIndex);
         }
     }
 
@@ -233,8 +241,12 @@ namespace Convention.Symbolization.Keyword
     /// </summary>
     public sealed class Return : SentenceKeyword<Return>
     {
-        public Return() : base("return")
+        public Return(int lineIndex,int wordIndex) : base("return", lineIndex, wordIndex)
         {
+        }
+        public override Internal.Keyword CloneVariable(string targetSymbolName, int lineIndex, int wordIndex)
+        {
+            return new Return(lineIndex, wordIndex);
         }
     }
 
@@ -243,8 +255,12 @@ namespace Convention.Symbolization.Keyword
     /// </summary>
     public sealed class If : VerbObjectScopeKeyword<If>
     {
-        public If() : base("if")
+        public If(int lineIndex,int wordIndex) : base("if", lineIndex, wordIndex)
         {
+        }
+        public override Internal.Keyword CloneVariable(string targetSymbolName, int lineIndex, int wordIndex)
+        {
+            return new If(lineIndex, wordIndex);
         }
     }
 
@@ -254,8 +270,12 @@ namespace Convention.Symbolization.Keyword
     /// </summary>
     public sealed class Elif : VerbObjectScopeKeyword<Elif>
     {
-        public Elif() : base("elif")
+        public Elif(int lineIndex,int wordIndex) : base("elif", lineIndex, wordIndex)
         {
+        }
+        public override Internal.Keyword CloneVariable(string targetSymbolName, int lineIndex, int wordIndex)
+        {
+            return new Elif(lineIndex, wordIndex);
         }
     }
 
@@ -265,8 +285,12 @@ namespace Convention.Symbolization.Keyword
     /// </summary>
     public sealed class Else : NamespaceKeyword<Else>
     {
-        public Else() : base("else")
+        public Else(int lineIndex,int wordIndex) : base("else", lineIndex, wordIndex)
         {
+        }
+        public override Internal.Keyword CloneVariable(string targetSymbolName, int lineIndex, int wordIndex)
+        {
+            return new Else(lineIndex, wordIndex);
         }
     }
 
@@ -275,8 +299,12 @@ namespace Convention.Symbolization.Keyword
     /// </summary>
     public sealed class While : VerbObjectScopeKeyword<While>
     {
-        public While() : base("while")
+        public While(int lineIndex,int wordIndex) : base("while", lineIndex, wordIndex)
         {
+        }
+        public override Internal.Keyword CloneVariable(string targetSymbolName, int lineIndex, int wordIndex)
+        {
+            return new While(lineIndex, wordIndex);
         }
     }
 
@@ -285,8 +313,12 @@ namespace Convention.Symbolization.Keyword
     /// </summary>
     public sealed class Break : SingleKeyword<Break>
     {
-        public Break() : base("break")
+        public Break(int lineIndex,int wordIndex) : base("break", lineIndex, wordIndex)
         {
+        }
+        public override Internal.Keyword CloneVariable(string targetSymbolName, int lineIndex, int wordIndex)
+        {
+            return new Break(lineIndex, wordIndex);
         }
     }
 
@@ -295,8 +327,12 @@ namespace Convention.Symbolization.Keyword
     /// </summary>
     public sealed class Continue : SingleKeyword<Continue>
     {
-        public Continue() : base("continue")
+        public Continue(int lineIndex,int wordIndex) : base("continue", lineIndex, wordIndex)
         {
+        }
+        public override Internal.Keyword CloneVariable(string targetSymbolName, int lineIndex, int wordIndex)
+        {
+            return new Continue(lineIndex, wordIndex);
         }
     }
 
@@ -305,8 +341,12 @@ namespace Convention.Symbolization.Keyword
     /// </summary>
     public sealed class Structure : NamespaceKeyword<Structure>
     {
-        public Structure() : base("struct")
+        public Structure(int lineIndex,int wordIndex) : base("struct", lineIndex, wordIndex)
         {
+        }
+        public override Internal.Keyword CloneVariable(string targetSymbolName, int lineIndex, int wordIndex)
+        {
+            return new Structure(lineIndex, wordIndex);
         }
     }
 }

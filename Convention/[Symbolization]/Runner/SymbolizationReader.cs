@@ -106,7 +106,7 @@ namespace Convention.Symbolization.Internal
 
         #region Read Scope Words
 
-        private class KeywordEntry
+        public class KeywordEntry
         {
             public int line = 1;
             public int wordIndex = 1;
@@ -118,10 +118,9 @@ namespace Convention.Symbolization.Internal
             }
         }
 
-        private Dictionary<Keyword, KeywordEntry> ScopeWords = new();
-
         public void CompleteScopeWord(SymbolizationContext rootContext)
         {
+            Dictionary<Keyword, KeywordEntry> ScopeWords = new();
             Keyword currentKey = null;
             bool isNextKeyword = true;
             foreach(var line in ScriptWords)
@@ -139,7 +138,7 @@ namespace Convention.Symbolization.Internal
                         }
                         else
                         {
-                            throw new InvalidGrammarException($"Line {line.Key}, word {wordCounter}: Expected a keyword, but got {word.Value}");
+                            throw new InvalidGrammarException($"Line {line.Key}, Word {wordCounter}: Expected a keyword, but got {word.Value}");
                         }
                     }
                     else
