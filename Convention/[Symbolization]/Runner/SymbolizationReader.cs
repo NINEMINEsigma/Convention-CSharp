@@ -106,28 +106,50 @@ namespace Convention.Symbolization.Internal
 
         #region Read Scope Words
 
+        private class KeywordEntry
+        {
+            public int line = 1;
+            public int wordIndex = 1;
+            public Dictionary<int, Dictionary<int, Variable>> Container = new();
+            public KeywordEntry(int line, int wordIndex)
+            {
+                this.line = line;
+                this.wordIndex = wordIndex;
+            }
+        }
+
+        private Dictionary<Keyword, KeywordEntry> ScopeWords = new();
+
         public void CompleteScopeWord(SymbolizationContext rootContext)
         {
-            int wordCounter = 1;
-            Internal.Keyword currentKey = null;
+            Keyword currentKey = null;
+            bool isNextKeyword = true;
             foreach(var line in ScriptWords)
             {
+                int wordCounter = 1;
                 foreach (var word in line.Value)
                 {
-                    if (currentKey == null)
+                    if (isNextKeyword)
                     {
-                        if(currentKey is Internal.Keyword cky)
+                        if (word.Value is Keyword cky)
                         {
                             currentKey = cky;
+                            ScopeWords.Add(currentKey, new(line.Key, wordCounter));
+                            isNextKeyword = false;
                         }
                         else
                         {
-                            throw new InvalidGrammarException($"Line {line.Key}, word {wordCounter}: Expected a keyword, but got {word}");
+                            throw new InvalidGrammarException($"Line {line.Key}, word {wordCounter}: Expected a keyword, but got {word.Value}");
                         }
                     }
                     else
                     {
-                        currentKey = currentKey.ControlContext(rootContext, line.Key, word.Key, word.Value);
+                        var container = ScopeWords[currentKey].Container;
+                        if (container.ContainsKey(line.Key) == false)
+                            container.Add(line.Key, new() { { wordCounter, word.Value } });
+                        else
+                            container[line.Key][wordCounter] = word.Value;
+                        isNextKeyword = currentKey.ControlScope(rootContext, line.Key, word.Key, word.Value) == false;
                     }
                     wordCounter++;
                 }

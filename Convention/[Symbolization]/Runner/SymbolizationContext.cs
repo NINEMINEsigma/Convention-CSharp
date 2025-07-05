@@ -20,8 +20,8 @@ namespace Convention.Symbolization
 
         public void Compile(Dictionary<int, Dictionary<int, Internal.Variable>> scriptWords)
         {
+            new Internal.SymbolizationReader() { ScriptWords = scriptWords }.CompleteScopeWord(this);
         }
-
 
         public void Compile(string allText)
         {
@@ -31,7 +31,7 @@ namespace Convention.Symbolization
                 reader.ReadChar(ch);
             var scriptWords = reader.ScriptWords;
             // Turn the script words into scope words
-            this.Compile(scriptWords);
+            reader.CompleteScopeWord(this);
         }
 
         public void Compile(ToolFile file)
