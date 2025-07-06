@@ -17,27 +17,49 @@ namespace Convention.Symbolization
         private readonly SymbolizationContext ParentContext;
         public readonly Internal.Namespace CurrentNamespace;
 
-        private void Compile(Internal.SymbolizationReader reader)
+        private void CompileToParent()
         {
-            reader.CompleteScopeWord(this);
+            if (ParentContext == null)
+                return;
         }
 
-        public void Compile(Dictionary<int, Dictionary<int, Internal.Variable>> scriptWords)
+        // Compile begin at scope words to sub context
+        public void Compile(Dictionary<Internal.Keyword, List<Internal.Variable>> scopeWords)
         {
-            // Turn the script words into scope words
-            Compile(new Internal.SymbolizationReader() { ScriptWords = scriptWords });
+            foreach (var (keyword, words) in scopeWords)
+            {
+
+            }
         }
 
+        // Compile begin at script words to scope words
+        private void CompileBeginAtScript2Scope(Internal.SymbolizationReader reader)
+        {
+            foreach (var word in reader.ScriptWords)
+            {
+                reader.ReadWord(word);
+            }
+            this.Compile(reader.ScopeWords);
+        }
+
+        // Compile begin at script words to scope words
+        public void Compile(List<Internal.Variable> scriptWords)
+        {
+            this.CompileBeginAtScript2Scope(new() { ScriptWords = scriptWords });
+        }
+
+        // Compile begin at text to script words
         public void Compile(string allText)
         {
-            // Create a new reader to parse the script words
             Internal.SymbolizationReader reader = new();
+            reader ??= new();
             foreach (char ch in allText)
                 reader.ReadChar(ch);
             // Turn the script words into scope words
-            Compile(reader);
+            this.CompileBeginAtScript2Scope(reader);
         }
 
+        // Compile begin at text to script words
         public void Compile(ToolFile file)
         {
             if (file.Exists() == false)

@@ -10,10 +10,10 @@ public class Program
 {
     static void Main(string[] args)
     {
-        var context = new SymbolizationRunner();
+        var runner = new SymbolizationRunner();
         try
         {
-            context.Compile("example_script.txt");
+            runner.Compile("example_script.txt");
             Console.WriteLine("Script compiled successfully.");
         }
         catch (FileNotFoundException ex)

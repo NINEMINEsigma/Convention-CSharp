@@ -12,10 +12,11 @@ namespace Convention.Symbolization.Internal
 
         private string buffer = "";
         private int lineContext = 1;
+        private int wordContext = 0;
         private bool isOutOfStringline = true;
-        public Dictionary<int, Dictionary<int, Variable>> ScriptWords = new() { { 1, new() } };
+        public List<Variable> ScriptWords = new();
 
-        private static HashSet<char> ControllerCharSet = new()
+        private readonly static HashSet<char> ControllerCharSet = new()
         {
             '{','}','(',')','[',']',
             '+','-','*','/','%',
@@ -61,7 +62,6 @@ namespace Convention.Symbolization.Internal
             buffer = ch.ToString();
             CompleteWord();
         }
-
         void PushChar(char ch)
         {
             buffer += ch;
@@ -70,25 +70,23 @@ namespace Convention.Symbolization.Internal
         {
             if (buffer.Length > 0)
             {
-                if (ScriptWords.TryGetValue(lineContext, out var line) == false)
-                {
-                    ScriptWords.Add(lineContext, line = new());
-                }
                 if (Internal.Keyword.Keywords.TryGetValue(buffer, out var keyword))
                 {
-                    line.Add(line.Count + 1, keyword.Clone() as Internal.Variable);
+                    ScriptWords.Add(keyword.CloneVariable(buffer, lineContext, wordContext));
                 }
                 else
                 {
-                    line.Add(line.Count + 1, new ScriptWordVariable(buffer));
+                    ScriptWords.Add(new ScriptWordVariable(buffer, lineContext, wordContext + 1));
                 }
                 buffer = "";
+                wordContext++;
             }
         }
         void CompleteLine()
         {
             CompleteWord();
-            lineContext++; ;
+            lineContext++;
+            wordContext = 0;
         }
         void BeginString()
         {
@@ -106,52 +104,31 @@ namespace Convention.Symbolization.Internal
 
         #region Read Scope Words
 
-        public class KeywordEntry
-        {
-            public int line = 1;
-            public int wordIndex = 1;
-            public Dictionary<int, Dictionary<int, Variable>> Container = new();
-            public KeywordEntry(int line, int wordIndex)
-            {
-                this.line = line;
-                this.wordIndex = wordIndex;
-            }
-        }
+        public Dictionary<Keyword, List<Variable>> ScopeWords = new();
+        public Keyword currentKey = null;
+        public bool isNextKeyword = true;
 
-        public void CompleteScopeWord(SymbolizationContext rootContext)
+        public void ReadWord(Variable word)
         {
-            Dictionary<Keyword, KeywordEntry> ScopeWords = new();
-            Keyword currentKey = null;
-            bool isNextKeyword = true;
-            foreach(var line in ScriptWords)
+            if (isNextKeyword)
             {
-                int wordCounter = 1;
-                foreach (var word in line.Value)
+                if (word is Keyword cky)
                 {
-                    if (isNextKeyword)
-                    {
-                        if (word.Value is Keyword cky)
-                        {
-                            currentKey = cky;
-                            ScopeWords.Add(currentKey, new(line.Key, wordCounter));
-                            isNextKeyword = false;
-                        }
-                        else
-                        {
-                            throw new InvalidGrammarException($"Line {line.Key}, Word {wordCounter}: Expected a keyword, but got {word.Value}");
-                        }
-                    }
-                    else
-                    {
-                        var container = ScopeWords[currentKey].Container;
-                        if (container.ContainsKey(line.Key) == false)
-                            container.Add(line.Key, new() { { wordCounter, word.Value } });
-                        else
-                            container[line.Key][wordCounter] = word.Value;
-                        isNextKeyword = currentKey.ControlScope(rootContext, line.Key, word.Key, word.Value) == false;
-                    }
-                    wordCounter++;
+                    currentKey = cky;
+                    ScopeWords.Add(currentKey, new());
+                    isNextKeyword = false;
                 }
+                else
+                {
+                    throw new InvalidGrammarException(
+                        $"Line {word.SymbolInfo.LineIndex}, Word {word.SymbolInfo.WordIndex}: Expected a keyword, but got {word}"
+                        );
+                }
+            }
+            else
+            {
+                ScopeWords[currentKey].Add(word);
+                isNextKeyword = currentKey.ControlScope(word) == false;
             }
         }
 
