@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using static System.Net.Mime.MediaTypeNames;
 
 namespace Convention.Symbolization.Internal
@@ -217,9 +218,7 @@ namespace Convention.Symbolization.Keyword
             }
             else if (pause == Pause.BeforeBody)
             {
-                if (next is not Internal.ScriptWordVariable swv)
-                    throw new InvalidGrammarException($"Not expected keyword for body start, but got {next}");
-                if (swv.Word == "{")
+                if (next is Internal.ScriptWordVariable swv && swv.Word == "{")
                 {
                     pause = Pause.Body;
                     layer++;
@@ -249,60 +248,68 @@ namespace Convention.Symbolization.Keyword
             return true;
         }
 
+        public abstract void BuildSpace(
+            SymbolizationContext context,
+            List<Internal.Variable> spaceExpression,
+            Dictionary<Internal.Variable, Internal.Variable> scopeStartAndEnd,
+            List<Internal.Variable> insideScopeWords
+            );
+
         public override void BuildScope(SymbolizationContext context, List<Internal.Variable> scopeWords)
         {
-            pause = Pause.BeforeExpression; 
-            layer = 0;
+            var pause = Pause.BeforeExpression; 
+            List<Internal.Variable> expression = new();
+            Dictionary<Internal.Variable, Internal.Variable> scopeStartAndEnd = new();
+            List<Internal.Variable> insideScopeWords = new();
+            Stack<Internal.Variable> stack = new();
             foreach (var word in scopeWords)
             {
                 if (pause == Pause.BeforeExpression)
                 {
-                    if (next is not Internal.ScriptWordVariable swv)
-                        throw new InvalidGrammarException($"Not expected a key Word: {next}");
-                    if (swv.Word == "(")
-                        pause = Pause.Expression;
-                    else
-                        throw new InvalidGrammarException($"Expected '(' symbol for expression start, but got {next}");
+                    pause = Pause.Expression;
                 }
                 else if (pause == Pause.Expression)
                 {
-                    if (next is Internal.ScriptWordVariable swv && swv.Word == ")")
+                    if (word is Internal.ScriptWordVariable swv && swv.Word == ")")
                     {
                         pause = Pause.BeforeBody;
+                    }
+                    else
+                    {
+                        expression.Add(word);
                     }
                 }
                 else if (pause == Pause.BeforeBody)
                 {
-                    if (next is not Internal.ScriptWordVariable swv)
-                        throw new InvalidGrammarException($"Not expected keyword for body start, but got {next}");
-                    if (swv.Word == "{")
+                    if (word is Internal.ScriptWordVariable swv && swv.Word == "{")
                     {
                         pause = Pause.Body;
-                        layer++;
+                        stack.Push(word);
                     }
                     else
+                    {
                         pause = Pause.SingleSentence;
+                        insideScopeWords.Add(word);
+                    }
                 }
                 else if (pause == Pause.Body)
                 {
-                    if (next is Internal.ScriptWordVariable swv)
+                    if (word is Internal.ScriptWordVariable swv)
                     {
                         if (swv.Word == "{")
-                            layer++;
+                            stack.Push(word);
                         else if (swv.Word == "}")
-                            layer--;
-                        if (layer == 0)
-                            return false;
+                            scopeStartAndEnd.Add(stack.Pop(), word);
                     }
+                    else
+                        insideScopeWords.Add(word);
                 }
                 else if (pause == Pause.SingleSentence)
                 {
-                    if (next is Internal.ScriptWordVariable swv && swv.Word == ";")
-                    {
-                        return false;
-                    }
+                    insideScopeWords.Add(word);
                 }
             }
+            BuildSpace(context, expression, scopeStartAndEnd, insideScopeWords);
         }
     }
 
@@ -313,6 +320,14 @@ namespace Convention.Symbolization.Keyword
     {
         public Import(int lineIndex, int wordIndex) : base("import", lineIndex, wordIndex)
         {
+        }
+
+        public override void BuildSentence(SymbolizationContext context, List<Internal.Variable> sentence)
+        {
+            ToolFile importPath = new(string.Join('/', sentence.ConvertAll(x => (x as Internal.ScriptWordVariable).Word)));
+            if(importPath.Exists()==false)
+                throw new FileNotFoundException(importPath.ToString());
+            new SymbolizationContext(context).Compile(importPath);
         }
 
         public override Internal.Keyword CloneVariable(string targetSymbolName, int lineIndex, int wordIndex)
@@ -329,6 +344,18 @@ namespace Convention.Symbolization.Keyword
         public Namespace(int lineIndex, int wordIndex) : base("namespace", lineIndex, wordIndex)
         {
         }
+
+        public override void BuildSpace(
+            SymbolizationContext context,
+            List<Internal.ScriptWordVariable> spaceExpression,
+            Dictionary<Internal.Variable, Internal.Variable> scopeStartAndEnd,
+            List<Internal.Variable> insideScopeWords
+            )
+        {
+            //TODO
+            //将命名空间放在新的子上下文中编译
+        }
+
         public override Internal.Keyword CloneVariable(string targetSymbolName, int lineIndex, int wordIndex)
         {
             return new Namespace(lineIndex, wordIndex);
@@ -343,6 +370,18 @@ namespace Convention.Symbolization.Keyword
         public FunctionDef(int lineIndex, int wordIndex) : base("def", lineIndex, wordIndex)
         {
         }
+
+        public override void BuildSpace(
+            SymbolizationContext context, 
+            List<Internal.ScriptWordVariable> spaceExpression, 
+            Dictionary<Internal.Variable, Internal.Variable> scopeStartAndEnd,
+            List<Internal.Variable> insideScopeWords
+            )
+        {
+            //TODO
+            //套用语法规则实现表达式向可执行语句的转换
+        }
+
         public override Internal.Keyword CloneVariable(string targetSymbolName, int lineIndex, int wordIndex)
         {
             return new FunctionDef(lineIndex, wordIndex);
@@ -357,6 +396,16 @@ namespace Convention.Symbolization.Keyword
         public Return(int lineIndex, int wordIndex) : base("return", lineIndex, wordIndex)
         {
         }
+
+        public override void BuildSentence(SymbolizationContext context, List<Internal.Variable> sentence)
+        {
+            var symbol = sentence[0];
+            //TODO
+            //直接转换为可执行语句
+            //在上下文中搜索被返回的symbol, 存在则返回对应对象, 不存在则返回symbol对象
+            //运行时检查返回值是否满足函数签名的返回值, 否则抛出异常
+        }
+
         public override Internal.Keyword CloneVariable(string targetSymbolName, int lineIndex, int wordIndex)
         {
             return new Return(lineIndex, wordIndex);
@@ -371,6 +420,19 @@ namespace Convention.Symbolization.Keyword
         public If(int lineIndex, int wordIndex) : base("if", lineIndex, wordIndex)
         {
         }
+
+        public override void BuildSpace(
+            SymbolizationContext context, 
+            List<Internal.Variable> spaceExpression, 
+            Dictionary<Internal.Variable, Internal.Variable> scopeStartAndEnd,
+            List<Internal.Variable> insideScopeWords
+            )
+        {
+            //TODO
+            //检查表达式是否成功, 成功则套用函数翻译规则将作用域翻译为可执行语句
+            //否则跳转到末尾
+        }
+
         public override Internal.Keyword CloneVariable(string targetSymbolName, int lineIndex, int wordIndex)
         {
             return new If(lineIndex, wordIndex);
