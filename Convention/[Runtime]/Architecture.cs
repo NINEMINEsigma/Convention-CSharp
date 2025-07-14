@@ -388,16 +388,21 @@ namespace Convention
 
         public static void UpdateTimeline()
         {
-            foreach (var pair in TimelineQuenes)
+            for (bool stats = true; stats;)
             {
-                var timeline = pair.Value;
-                if(timeline.Quene[timeline.Context].predicate())
+                stats = false;
+                foreach (var pair in TimelineQuenes)
                 {
-                    foreach (var action in timeline.Quene[timeline.Context].actions)
+                    var timeline = pair.Value;
+                    if (timeline.Quene[timeline.Context].predicate())
                     {
-                        action();
+                        stats = true;
+                        foreach (var action in timeline.Quene[timeline.Context].actions)
+                        {
+                            action();
+                        }
+                        timeline.Context++;
                     }
-                    timeline.Context++;
                 }
             }
         }

@@ -1,8 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using static System.Net.Mime.MediaTypeNames;
 
 namespace Convention.Symbolization.Internal
 {
