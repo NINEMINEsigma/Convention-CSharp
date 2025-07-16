@@ -5,20 +5,19 @@ using System.Threading;
 using Convention;
 using Convention.EasySave;
 using Convention.Symbolization;
+using Convention.Test;
 
 public class Program
 {
     static void Main(string[] args)
     {
-        var runner = new SymbolizationRunner();
-        try
-        {
-            runner.Compile("example_script.txt");
-            Console.WriteLine("Script compiled successfully.");
-        }
-        catch (FileNotFoundException ex)
-        {
-            Console.WriteLine($"Error: {ex.Message}");
-        }
+        Console.WriteLine("Convention-CSharp 测试程序");
+        Console.WriteLine("==========================");
+        
+        // 运行文件功能测试
+        FileTest.RunTests();
+        
+        Console.WriteLine("\n按任意键退出...");
+        Console.ReadKey();
     }
 }

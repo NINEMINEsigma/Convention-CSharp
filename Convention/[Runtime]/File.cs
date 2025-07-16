@@ -3,9 +3,41 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
+using System.IO.Compression;
+using System.Security.Cryptography;
+using System.Text;
+using System.Threading.Tasks;
+using System.Windows.Forms;
+using System.ComponentModel;
+using System.Runtime.InteropServices;
 
 namespace Convention
 {
+    // 自定义异常类
+    public class FileOperationException : Exception
+    {
+        public FileOperationException(string message) : base(message) { }
+        public FileOperationException(string message, Exception innerException) : base(message, innerException) { }
+    }
+
+    public class CompressionException : FileOperationException
+    {
+        public CompressionException(string message) : base(message) { }
+        public CompressionException(string message, Exception innerException) : base(message, innerException) { }
+    }
+
+    public class EncryptionException : FileOperationException
+    {
+        public EncryptionException(string message) : base(message) { }
+        public EncryptionException(string message, Exception innerException) : base(message, innerException) { }
+    }
+
+    public class HashException : FileOperationException
+    {
+        public HashException(string message) : base(message) { }
+        public HashException(string message, Exception innerException) : base(message, innerException) { }
+    }
+
     [Serializable]
     public sealed class ToolFile
     {
@@ -13,7 +45,7 @@ namespace Convention
         private FileSystemInfo OriginInfo;
         public ToolFile(string path) 
         {
-            FullPath = path;
+            FullPath = Path.GetFullPath(path);
             Refresh();
         }
         public override string ToString()
@@ -50,6 +82,47 @@ namespace Convention
                     ? this.FullPath.LastIndexOf('.')
                     : ^0
                 )..];
+        }
+
+        // 新增：获取文件名（对应 Python 的 GetFilename）
+        public string GetFilename(bool is_without_extension = false)
+        {
+            if (is_without_extension && Path.HasExtension(FullPath))
+            {
+                return Path.GetFileNameWithoutExtension(FullPath);
+            }
+            else if (FullPath.EndsWith(Path.DirectorySeparatorChar.ToString()) || FullPath.EndsWith(Path.AltDirectorySeparatorChar.ToString()))
+            {
+                return Path.GetFileName(FullPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+            }
+            else
+            {
+                return Path.GetFileName(FullPath);
+            }
+        }
+
+        // 新增：获取目录路径（对应 Python 的 GetDir）
+        public string GetDir()
+        {
+            return Path.GetDirectoryName(FullPath);
+        }
+
+        // 新增：获取目录的 ToolFile 对象（对应 Python 的 GetDirToolFile）
+        public ToolFile GetDirToolFile()
+        {
+            return new ToolFile(GetDir());
+        }
+
+        // 新增：获取当前目录名（对应 Python 的 GetCurrentDirName）
+        public string GetCurrentDirName()
+        {
+            return Path.GetDirectoryName(FullPath);
+        }
+
+        // 新增：获取父目录（对应 Python 的 GetParentDir）
+        public ToolFile GetParentDir()
+        {
+            return new ToolFile(GetDir());
         }
 
         #endregion
@@ -112,6 +185,44 @@ namespace Convention
             return result;
         }
 
+        // 新增：加载为 CSV（使用 C# 内置功能）
+        public List<string[]> LoadAsCsv()
+        {
+            if (IsFile() == false)
+                throw new InvalidOperationException("Target is not a file");
+            
+            var lines = File.ReadAllLines(FullPath);
+            var result = new List<string[]>();
+            
+            foreach (var line in lines)
+            {
+                var fields = line.Split(',');
+                result.Add(fields);
+            }
+            
+            return result;
+        }
+
+        // 新增：加载为 XML（使用 C# 内置功能）
+        public string LoadAsXml()
+        {
+            return LoadAsText();
+        }
+
+        // 新增：加载为 Excel（简化实现，实际需要第三方库）
+        public string LoadAsExcel()
+        {
+            // 注意：真正的 Excel 读取需要第三方库如 EPPlus 或 NPOI
+            // 这里返回文本内容作为简化实现
+            return LoadAsText();
+        }
+
+        // 新增：加载为未知格式（对应 Python 的 LoadAsUnknown）
+        public string LoadAsUnknown(string suffix)
+        {
+            return LoadAsText();
+        }
+
         #endregion
 
         #region Save
@@ -124,7 +235,7 @@ namespace Convention
         {
             EasySave.EasySave.Save(key, data,FullPath);
         }
-        private void SaveAsText(string data)
+        public void SaveAsText(string data)
         {
             using var fs = new FileStream(FullPath, FileMode.CreateNew, FileAccess.Write);
             using var sw = new StreamWriter(fs);
@@ -149,6 +260,43 @@ namespace Convention
         public void SaveAsBinary(byte[] data)
         {
             SaveDataAsBinary(FullPath, data, (OriginInfo as FileInfo).OpenWrite());
+        }
+
+        // 新增：保存为 CSV（对应 Python 的 SaveAsCsv）
+        public void SaveAsCsv(List<string[]> csvData)
+        {
+            if (IsFile() == false)
+                throw new InvalidOperationException("Target is not a file");
+            
+            var lines = csvData.Select(row => string.Join(",", row));
+            File.WriteAllLines(FullPath, lines);
+        }
+
+        // 新增：保存为 XML（对应 Python 的 SaveAsXml）
+        public void SaveAsXml(string xmlData)
+        {
+            SaveAsText(xmlData);
+        }
+
+        // 新增：保存为 Excel（简化实现）
+        public void SaveAsExcel(string excelData)
+        {
+            SaveAsText(excelData);
+        }
+
+        // 新增：保存为数据框（对应 Python 的 SaveAsDataframe）
+        public void SaveAsDataframe(List<string[]> dataframeData)
+        {
+            SaveAsCsv(dataframeData);
+        }
+
+        // 新增：保存为未知格式（对应 Python 的 SaveAsUnknown）
+        public void SaveAsUnknown(object unknownData)
+        {
+            if (unknownData is byte[] bytes)
+                SaveAsBinary(bytes);
+            else
+                SaveAsText(unknownData.ToString());
         }
 
         #endregion
@@ -178,6 +326,48 @@ namespace Convention
 
         #endregion
 
+        #region Size and Properties
+
+        // 新增：获取文件大小（对应 Python 的 GetSize）
+        public long GetSize()
+        {
+            if (IsDir())
+            {
+                return GetDirectorySize(FullPath);
+            }
+            else
+            {
+                return (OriginInfo as FileInfo)?.Length ?? 0;
+            }
+        }
+
+        private long GetDirectorySize(string path)
+        {
+            long size = 0;
+            try
+            {
+                var files = Directory.GetFiles(path);
+                foreach (var file in files)
+                {
+                    var fileInfo = new FileInfo(file);
+                    size += fileInfo.Length;
+                }
+
+                var dirs = Directory.GetDirectories(path);
+                foreach (var dir in dirs)
+                {
+                    size += GetDirectorySize(dir);
+                }
+            }
+            catch (Exception)
+            {
+                // 忽略访问权限错误
+            }
+            return size;
+        }
+
+        #endregion
+
         #region Operator
 
         public static ToolFile operator |(ToolFile left, string rightPath)
@@ -185,6 +375,22 @@ namespace Convention
             string lp = left.GetFullPath();
             return new ToolFile(Path.Combine(lp, rightPath));
         }
+
+        // 新增：相等比较（对应 Python 的 __eq__）
+        public override bool Equals(object obj)
+        {
+            if (obj is ToolFile other)
+            {
+                return Path.GetFullPath(FullPath).Equals(Path.GetFullPath(other.FullPath), StringComparison.OrdinalIgnoreCase);
+            }
+            return false;
+        }
+
+        public override int GetHashCode()
+        {
+            return Path.GetFullPath(FullPath).GetHashCode();
+        }
+
         public ToolFile Open(string path)
         {
             this.FullPath = path;
@@ -240,6 +446,46 @@ namespace Convention
             }
             return this;
         }
+
+        // 新增：复制方法重载（对应 Python 的 Copy）
+        public ToolFile Copy(string targetPath = null)
+        {
+            if (targetPath == null)
+                return new ToolFile(FullPath);
+            
+            if (!Exists())
+                throw new FileNotFoundException("File not found");
+            
+            var targetFile = new ToolFile(targetPath);
+            if (targetFile.IsDir())
+                targetFile = targetFile | GetFilename();
+            
+            if (IsDir())
+                CopyDirectory(FullPath, targetFile.GetFullPath());
+            else
+                File.Copy(FullPath, targetFile.GetFullPath());
+            
+            return targetFile;
+        }
+
+        private void CopyDirectory(string sourceDir, string destinationDir)
+        {
+            var dir = new DirectoryInfo(sourceDir);
+            Directory.CreateDirectory(destinationDir);
+
+            foreach (FileInfo file in dir.GetFiles())
+            {
+                string targetFilePath = Path.Combine(destinationDir, file.Name);
+                file.CopyTo(targetFilePath);
+            }
+
+            foreach (DirectoryInfo subDir in dir.GetDirectories())
+            {
+                string newDestinationDir = Path.Combine(destinationDir, subDir.Name);
+                CopyDirectory(subDir.FullName, newDestinationDir);
+            }
+        }
+
         public ToolFile Delete()
         {
             if (IsDir())
@@ -248,152 +494,711 @@ namespace Convention
                 File.Delete(FullPath);
             return this;
         }
-        public ToolFile Remove() => Delete();
-        public ToolFile MustExistsPath()
+
+        // 新增：Remove 方法（对应 Python 的 Remove）
+        public ToolFile Remove()
         {
-            this.Close();
-            this.TryCreateParentPath();
-            this.Create();
-            return this;
+            return Delete();
         }
+
         #endregion
 
-        #region Dir
+        #region Directory Operations
 
+        public ToolFile MustExistsPath()
+        {
+            TryCreateParentPath();
+            Create();
+            return this;
+        }
         public ToolFile TryCreateParentPath()
         {
-            if (this.GetName().Contains('/') || this.GetName().Contains('\\'))
+            string dirPath = Path.GetDirectoryName(FullPath);
+            if (!string.IsNullOrEmpty(dirPath) && !Directory.Exists(dirPath))
             {
-                var parent = new ToolFile(this.GetParentDir());
-                if (parent.Exists())
-                {
-                    parent.Create();
-                }
+                Directory.CreateDirectory(dirPath);
+            }
+            return this;
+        }
+        public List<string> DirIter()
+        {
+            if (!IsDir())
+                throw new InvalidOperationException("Target is not a directory");
+            return Directory.GetFileSystemEntries(FullPath).ToList();
+        }
+        public List<ToolFile> DirToolFileIter()
+        {
+            if (!IsDir())
+                throw new InvalidOperationException("Target is not a directory");
+            var result = new List<ToolFile>();
+            foreach (var entry in Directory.GetFileSystemEntries(FullPath))
+            {
+                result.Add(new ToolFile(entry));
+            }
+            return result;
+        }
+        public ToolFile BackToParentDir()
+        {
+            FullPath = GetDir();
+            Refresh();
+            return this;
+        }
+        public int DirCount(bool ignore_folder = true)
+        {
+            if (!IsDir())
+                throw new InvalidOperationException("Target is not a directory");
+            
+            var entries = Directory.GetFileSystemEntries(FullPath);
+            if (ignore_folder)
+            {
+                return entries.Count(entry => File.Exists(entry));
+            }
+            return entries.Length;
+        }
+        public ToolFile DirClear()
+        {
+            if (!IsDir())
+                throw new InvalidOperationException("Target is not a directory");
+            
+            foreach (var file in DirToolFileIter())
+            {
+                file.Remove();
             }
             return this;
         }
 
-        public List<string> DirIter()
+        // 新增：MakeFileInside 方法（对应 Python 的 MakeFileInside）
+        public ToolFile MakeFileInside(ToolFile data, bool is_delete_source = false)
         {
-            if (this.IsDir())
+            if (!IsDir())
+                throw new InvalidOperationException("Cannot make file inside a file, because this object target is not a directory");
+            
+            var result = this | data.GetFilename();
+            if (is_delete_source)
+                data.Move(result.GetFullPath());
+            else
+                data.Copy(result.GetFullPath());
+            
+            return this;
+        }
+
+        // 新增：查找文件方法（对应 Python 的 FirstFileWithExtension）
+        public ToolFile FirstFileWithExtension(string extension)
+        {
+            var targetDir = IsDir() ? this : GetDirToolFile();
+            foreach (var file in targetDir.DirToolFileIter())
             {
-                var dir = new DirectoryInfo(FullPath);
-                var result = dir.GetDirectories().ToList().ConvertAll(x => x.FullName);
-                result.AddRange(dir.GetFiles().ToList().ConvertAll(x => x.FullName));
-                return result;
+                if (!file.IsDir() && file.GetExtension() == extension)
+                {
+                    return file;
+                }
             }
             return null;
         }
 
-        public List<ToolFile> DirToolFileIter()
+        // 新增：查找文件方法（对应 Python 的 FirstFile）
+        public ToolFile FirstFile(Func<string, bool> predicate)
         {
-            if (this.IsDir())
+            var targetDir = IsDir() ? this : GetDirToolFile();
+            foreach (var file in targetDir.DirToolFileIter())
             {
-                return DirIter().ConvertAll(x => new ToolFile(x));
-            }
-            throw new DirectoryNotFoundException(FullPath);
-        }
-
-        public ToolFile BackToParentDir()
-        {
-            var file = new ToolFile(this.GetParentDir());
-            this.Close();
-            this.FullPath = file.FullPath;
-            this.OriginInfo = file.OriginInfo;
-            return this;
-        }
-
-        public ToolFile GetParentDir()
-        {
-            if (IsDir())
-                return new ToolFile((this.OriginInfo as DirectoryInfo).Parent.FullName);
-            else
-                return new ToolFile((this.OriginInfo as FileInfo).DirectoryName);
-        }
-
-        public int DirCount()
-        {
-            if (IsDir())
-                return Directory.EnumerateFiles(FullPath).Count();
-            return -1;
-        }
-
-        public ToolFile DirClear()
-        {
-            if (IsDir())
-            {
-                foreach (var file in DirIter())
+                if (predicate(file.GetFilename()))
                 {
-                    File.Delete(file);
+                    return file;
                 }
             }
-            throw new DirectoryNotFoundException();
+            return null;
         }
 
-        public ToolFile MakeFileInside(string source, bool isDeleteSource = false)
+        // 新增：查找所有文件方法（对应 Python 的 FindFileWithExtension）
+        public List<ToolFile> FindFileWithExtension(string extension)
         {
-            if (this.IsDir() == false)
-                throw new DirectoryNotFoundException(FullPath);
-            string target = this | source;
-            if (isDeleteSource)
-                File.Move(target, source);
-            else
-                File.Copy(target, source);
-            return this;
+            var targetDir = IsDir() ? this : GetDirToolFile();
+            var result = new List<ToolFile>();
+            foreach (var file in targetDir.DirToolFileIter())
+            {
+                if (!file.IsDir() && file.GetExtension() == extension)
+                {
+                    result.Add(file);
+                }
+            }
+            return result;
+        }
+
+        // 新增：查找所有文件方法（对应 Python 的 FindFile）
+        public List<ToolFile> FindFile(Func<string, bool> predicate)
+        {
+            var targetDir = IsDir() ? this : GetDirToolFile();
+            var result = new List<ToolFile>();
+            foreach (var file in targetDir.DirToolFileIter())
+            {
+                if (predicate(file.GetFilename()))
+                {
+                    result.Add(file);
+                }
+            }
+            return result;
         }
 
         #endregion
 
+        #region Compression
+
+        // 新增：压缩方法（对应 Python 的 Compress）
+        public ToolFile Compress(string outputPath = null, string format = "zip")
+        {
+            if (!Exists())
+                throw new FileNotFoundException($"File not found: {GetFullPath()}");
+
+            if (outputPath == null)
+            {
+                outputPath = GetFullPath() + (format == "zip" ? ".zip" : ".tar");
+            }
+
+            try
+            {
+                if (format.ToLower() == "zip")
+                {
+                    if (IsDir())
+                    {
+                        ZipFile.CreateFromDirectory(FullPath, outputPath);
+                    }
+                    else
+                    {
+                        using (var archive = ZipFile.Open(outputPath, ZipArchiveMode.Create))
+                        {
+                            archive.CreateEntryFromFile(FullPath, GetFilename());
+                        }
+                    }
+                }
+                else
+                {
+                    throw new CompressionException($"Unsupported compression format: {format}");
+                }
+
+                return new ToolFile(outputPath);
+            }
+            catch (Exception ex)
+            {
+                throw new CompressionException($"Compression failed: {ex.Message}", ex);
+            }
+        }
+
+        // 新增：解压方法（对应 Python 的 Decompress）
+        public ToolFile Decompress(string outputPath = null)
+        {
+            if (!Exists() || !IsFile())
+                throw new FileNotFoundException($"File not found: {GetFullPath()}");
+
+            if (GetExtension().ToLower() != "zip")
+                throw new CompressionException("Only ZIP files are supported for decompression");
+
+            if (outputPath == null)
+            {
+                outputPath = Path.Combine(GetDir(), Path.GetFileNameWithoutExtension(GetFilename()));
+            }
+
+            try
+            {
+                ZipFile.ExtractToDirectory(FullPath, outputPath);
+                return new ToolFile(outputPath);
+            }
+            catch (Exception ex)
+            {
+                throw new CompressionException($"Decompression failed: {ex.Message}", ex);
+            }
+        }
+
+        #endregion
+
+        #region Encryption
+
+        // 新增：加密方法（对应 Python 的 Encrypt）
+        public ToolFile Encrypt(string key, string algorithm = "AES")
+        {
+            if (!Exists() || !IsFile())
+                throw new FileNotFoundException($"File not found: {GetFullPath()}");
+
+            try
+            {
+                byte[] data = LoadAsBinary();
+                byte[] encryptedData;
+
+                if (algorithm.ToUpper() == "AES")
+                {
+                    using (var aes = Aes.Create())
+                    {
+                        var keyBytes = Encoding.UTF8.GetBytes(key.PadRight(32).Substring(0, 32));
+                        aes.Key = keyBytes;
+                        aes.GenerateIV();
+
+                        using (var encryptor = aes.CreateEncryptor())
+                        using (var ms = new MemoryStream())
+                        {
+                            ms.Write(aes.IV, 0, aes.IV.Length);
+                            using (var cs = new CryptoStream(ms, encryptor, CryptoStreamMode.Write))
+                            {
+                                cs.Write(data, 0, data.Length);
+                                cs.FlushFinalBlock();
+                            }
+                            encryptedData = ms.ToArray();
+                        }
+                    }
+                }
+                else
+                {
+                    throw new EncryptionException($"Unsupported encryption algorithm: {algorithm}");
+                }
+
+                SaveAsBinary(encryptedData);
+                return this;
+            }
+            catch (Exception ex)
+            {
+                throw new EncryptionException($"Encryption failed: {ex.Message}", ex);
+            }
+        }
+
+        // 新增：解密方法（对应 Python 的 decrypt）
+        public ToolFile Decrypt(string key, string algorithm = "AES")
+        {
+            if (!Exists() || !IsFile())
+                throw new FileNotFoundException($"File not found: {GetFullPath()}");
+
+            try
+            {
+                byte[] encryptedData = LoadAsBinary();
+                byte[] decryptedData;
+
+                if (algorithm.ToUpper() == "AES")
+                {
+                    using (var aes = Aes.Create())
+                    {
+                        var keyBytes = Encoding.UTF8.GetBytes(key.PadRight(32).Substring(0, 32));
+                        aes.Key = keyBytes;
+
+                        using (var ms = new MemoryStream(encryptedData))
+                        {
+                            byte[] iv = new byte[16];
+                            ms.Read(iv, 0, 16);
+                            aes.IV = iv;
+
+                            using (var decryptor = aes.CreateDecryptor())
+                            using (var resultMs = new MemoryStream())
+                            {
+                                using (var cs = new CryptoStream(ms, decryptor, CryptoStreamMode.Read))
+                                {
+                                    cs.CopyTo(resultMs);
+                                }
+                                decryptedData = resultMs.ToArray();
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    throw new EncryptionException($"Unsupported encryption algorithm: {algorithm}");
+                }
+
+                SaveAsBinary(decryptedData);
+                return this;
+            }
+            catch (Exception ex)
+            {
+                throw new EncryptionException($"Decryption failed: {ex.Message}", ex);
+            }
+        }
+
+        #endregion
+
+        #region Hash
+
+        // 新增：计算哈希值（对应 Python 的 calculate_hash）
+        public string CalculateHash(string algorithm = "MD5", int chunkSize = 8192)
+        {
+            if (!Exists() || !IsFile())
+                throw new FileNotFoundException($"File not found: {GetFullPath()}");
+
+            try
+            {
+                using (var hashAlgorithm = GetHashAlgorithm(algorithm))
+                using (var stream = File.OpenRead(FullPath))
+                {
+                    byte[] hash = hashAlgorithm.ComputeHash(stream);
+                    return BitConverter.ToString(hash).Replace("-", "").ToLower();
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new HashException($"Hash calculation failed: {ex.Message}", ex);
+            }
+        }
+
+        private HashAlgorithm GetHashAlgorithm(string algorithm)
+        {
+            return algorithm.ToUpper() switch
+            {
+                "MD5" => MD5.Create(),
+                "SHA1" => SHA1.Create(),
+                "SHA256" => SHA256.Create(),
+                "SHA512" => SHA512.Create(),
+                _ => throw new HashException($"Unsupported hash algorithm: {algorithm}")
+            };
+        }
+
+        // 新增：验证哈希值（对应 Python 的 verify_hash）
+        public bool VerifyHash(string expectedHash, string algorithm = "MD5")
+        {
+            string actualHash = CalculateHash(algorithm);
+            return string.Equals(actualHash, expectedHash, StringComparison.OrdinalIgnoreCase);
+        }
+
+        // 新增：保存哈希值（对应 Python 的 save_hash）
+        public ToolFile SaveHash(string algorithm = "MD5", string outputPath = null)
+        {
+            string hash = CalculateHash(algorithm);
+            
+            if (outputPath == null)
+            {
+                outputPath = GetFullPath() + "." + algorithm.ToLower();
+            }
+
+            var hashFile = new ToolFile(outputPath);
+            hashFile.SaveAsText(hash);
+            
+            return hashFile;
+        }
+
+        #endregion
+
+        #region File Monitoring
+
+        // 新增：文件监控（简化实现，对应 Python 的 start_monitoring）
+        public void StartMonitoring(Action<string, string> callback, bool recursive = false, 
+            List<string> ignorePatterns = null, bool ignoreDirectories = false, 
+            bool caseSensitive = true, bool isLog = true)
+        {
+            if (!IsDir())
+                throw new InvalidOperationException("Monitoring is only supported for directories");
+
+            // 注意：这是一个简化实现，实际的文件监控需要更复杂的实现
+            // 可以使用 FileSystemWatcher 来实现完整功能
+            var watcher = new FileSystemWatcher(FullPath)
+            {
+                IncludeSubdirectories = recursive,
+                EnableRaisingEvents = true
+            };
+
+            watcher.Created += (sender, e) => callback("created", e.FullPath);
+            watcher.Modified += (sender, e) => callback("modified", e.FullPath);
+            watcher.Deleted += (sender, e) => callback("deleted", e.FullPath);
+            watcher.Renamed += (sender, e) => callback("moved", e.FullPath);
+        }
+
+        #endregion
+
+        #region Backup
+
+        // 新增：创建备份（对应 Python 的 create_backup）
+        public ToolFile CreateBackup(string backupDir = null, int maxBackups = 5, 
+            string backupFormat = "zip", bool includeMetadata = true)
+        {
+            if (!Exists())
+                throw new FileNotFoundException($"File not found: {GetFullPath()}");
+
+            if (backupDir == null)
+            {
+                backupDir = Path.Combine(GetDir(), "backups");
+            }
+
+            var backupDirectory = new ToolFile(backupDir);
+            if (!backupDirectory.Exists())
+            {
+                backupDirectory.Create();
+            }
+
+            string timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+            string backupFileName = $"{GetFilename()}_{timestamp}.{backupFormat}";
+            string backupPath = Path.Combine(backupDir, backupFileName);
+
+            try
+            {
+                if (backupFormat.ToLower() == "zip")
+                {
+                    Compress(backupPath, "zip");
+                }
+                else
+                {
+                    Copy(backupPath);
+                }
+
+                // 清理旧备份
+                CleanOldBackups(backupDir, maxBackups, backupFormat);
+
+                return new ToolFile(backupPath);
+            }
+            catch (Exception ex)
+            {
+                throw new FileOperationException($"Backup creation failed: {ex.Message}", ex);
+            }
+        }
+
+        private void CleanOldBackups(string backupDir, int maxBackups, string format)
+        {
+            var backupFiles = Directory.GetFiles(backupDir, $"*.{format}")
+                .Select(f => new FileInfo(f))
+                .OrderByDescending(f => f.CreationTime)
+                .Skip(maxBackups);
+
+            foreach (var file in backupFiles)
+            {
+                file.Delete();
+            }
+        }
+
+        // 新增：恢复备份（对应 Python 的 restore_backup）
+        public ToolFile RestoreBackup(string backupFile, string restorePath = null, bool verifyHash = true)
+        {
+            var backupToolFile = new ToolFile(backupFile);
+            if (!backupToolFile.Exists())
+                throw new FileNotFoundException($"Backup file not found: {backupFile}");
+
+            if (restorePath == null)
+            {
+                restorePath = GetFullPath();
+            }
+
+            try
+            {
+                if (backupToolFile.GetExtension().ToLower() == "zip")
+                {
+                    backupToolFile.Decompress(restorePath);
+                }
+                else
+                {
+                    backupToolFile.Copy(restorePath);
+                }
+
+                return new ToolFile(restorePath);
+            }
+            catch (Exception ex)
+            {
+                throw new FileOperationException($"Backup restoration failed: {ex.Message}", ex);
+            }
+        }
+
+        // 新增：列出备份（对应 Python 的 list_backups）
+        public List<ToolFile> ListBackups(string backupDir = null)
+        {
+            if (backupDir == null)
+            {
+                backupDir = Path.Combine(GetDir(), "backups");
+            }
+
+            if (!Directory.Exists(backupDir))
+                return new List<ToolFile>();
+
+            return Directory.GetFiles(backupDir)
+                .Where(f => Path.GetFileName(f).StartsWith(GetFilename()))
+                .Select(f => new ToolFile(f))
+                .OrderByDescending(f => f.GetTimestamp())
+                .ToList();
+        }
+
+        #endregion
+
+        #region Permissions
+
+        // 新增：获取权限（对应 Python 的 get_permissions）
+        public Dictionary<string, bool> GetPermissions()
+        {
+            if (!Exists())
+                throw new FileNotFoundException($"File not found: {GetFullPath()}");
+
+            var permissions = new Dictionary<string, bool>();
+            
+            try
+            {
+                var fileInfo = new FileInfo(FullPath);
+                var attributes = fileInfo.Attributes;
+
+                permissions["read"] = true; // 如果能获取到文件信息，说明可读
+                permissions["write"] = !attributes.HasFlag(FileAttributes.ReadOnly);
+                permissions["execute"] = false; // Windows 文件没有执行权限概念
+                permissions["hidden"] = attributes.HasFlag(FileAttributes.Hidden);
+            }
+            catch (Exception)
+            {
+                permissions["read"] = false;
+                permissions["write"] = false;
+                permissions["execute"] = false;
+                permissions["hidden"] = false;
+            }
+
+            return permissions;
+        }
+
+        // 新增：设置权限（对应 Python 的 set_permissions）
+        public ToolFile SetPermissions(bool? read = null, bool? write = null, 
+            bool? execute = null, bool? hidden = null, bool recursive = false)
+        {
+            if (!Exists())
+                throw new FileNotFoundException($"File not found: {GetFullPath()}");
+
+            try
+            {
+                var fileInfo = new FileInfo(FullPath);
+                var attributes = fileInfo.Attributes;
+
+                if (write.HasValue)
+                {
+                    if (write.Value)
+                        attributes &= ~FileAttributes.ReadOnly;
+                    else
+                        attributes |= FileAttributes.ReadOnly;
+                }
+
+                if (hidden.HasValue)
+                {
+                    if (hidden.Value)
+                        attributes |= FileAttributes.Hidden;
+                    else
+                        attributes &= ~FileAttributes.Hidden;
+                }
+
+                fileInfo.Attributes = attributes;
+
+                if (recursive && IsDir())
+                {
+                    foreach (var child in DirToolFileIter())
+                    {
+                        child.SetPermissions(read, write, execute, hidden, true);
+                    }
+                }
+
+                return this;
+            }
+            catch (Exception ex)
+            {
+                throw new FileOperationException($"Permission setting failed: {ex.Message}", ex);
+            }
+        }
+
+        // 新增：权限检查方法（对应 Python 的 is_readable, is_writable 等）
+        public bool IsReadable()
+        {
+            try
+            {
+                var permissions = GetPermissions();
+                return permissions["read"];
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        public bool IsWritable()
+        {
+            try
+            {
+                var permissions = GetPermissions();
+                return permissions["write"];
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        public bool IsExecutable()
+        {
+            try
+            {
+                var permissions = GetPermissions();
+                return permissions["execute"];
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        public bool IsHidden()
+        {
+            try
+            {
+                var permissions = GetPermissions();
+                return permissions["hidden"];
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        #endregion
+
+        #region Utility Methods
+
+        public ToolFile MakeFileInside(string source, bool isDeleteSource = false)
+        {
+            if (IsDir() == false)
+                throw new InvalidOperationException();
+            var sourceFile = new ToolFile(source);
+            return MakeFileInside(sourceFile, isDeleteSource);
+        }
         public static string[] SelectMultipleFiles(string filter = "所有文件|*.*", string title = "选择文件")
         {
-            if (PlatformIndicator.IsPlatformWindows)
-                return WindowsKit.SelectMultipleFiles(filter, title);
-            throw new NotImplementedException();
+            using var dialog = new OpenFileDialog
+            {
+                Filter = filter,
+                Title = title,
+                Multiselect = true
+            };
+            return dialog.ShowDialog() == DialogResult.OK ? dialog.FileNames : new string[0];
         }
-
         public static string SelectFile(string filter = "所有文件|*.*", string title = "选择文件")
         {
-            if (PlatformIndicator.IsPlatformWindows)
+            using var dialog = new OpenFileDialog
             {
-                var results = WindowsKit.SelectMultipleFiles(filter, title);
-                if (results != null && results.Length > 0)
-                    return results[0];
-            }
-            throw new NotImplementedException();
+                Filter = filter,
+                Title = title
+            };
+            return dialog.ShowDialog() == DialogResult.OK ? dialog.FileName : null;
         }
-
         public static string SaveFile(string filter = "所有文件|*.*", string title = "保存文件")
         {
-            if (PlatformIndicator.IsPlatformWindows)
-                return WindowsKit.SaveFile(filter, title);
-            throw new NotImplementedException();
+            using var dialog = new SaveFileDialog
+            {
+                Filter = filter,
+                Title = title
+            };
+            return dialog.ShowDialog() == DialogResult.OK ? dialog.FileName : null;
         }
-
         public static string SelectFolder(string description = "请选择文件夹")
         {
-            if (PlatformIndicator.IsPlatformWindows)
-                return WindowsKit.SelectFolder(description);
-            throw new NotImplementedException();
+            using var dialog = new FolderBrowserDialog
+            {
+                Description = description
+            };
+            return dialog.ShowDialog() == DialogResult.OK ? dialog.SelectedPath : null;
         }
-
         public DateTime GetTimestamp()
         {
-            return File.GetLastWriteTime(FullPath).ToUniversalTime();
+            return (OriginInfo as FileInfo)?.LastWriteTime ?? DateTime.MinValue;
         }
-
         public static string BrowseFile(params string[] extensions)
         {
-            string filter = "";
-            foreach (var ext in extensions)
-            {
-                filter += "*." + ext + ";";
-            }
-            string result = SelectFile("所有文件|" + filter);
-            return result;
+            string filter = string.Join("|", extensions.Select(ext => $"{ext.ToUpper()} 文件|*.{ext}"));
+            return SelectFile(filter);
         }
         public static ToolFile BrowseToolFile(params string[] extensions)
         {
-            return new ToolFile(BrowseFile(extensions));
+            string path = BrowseFile(extensions);
+            return path != null ? new ToolFile(path) : null;
         }
+
+        #endregion
     }
 }
