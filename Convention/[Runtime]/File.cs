@@ -1,19 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Text.Json;
 using System.IO.Compression;
+using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
-using System.Threading.Tasks;
-using System.Windows.Forms;
-using System.ComponentModel;
-using System.Runtime.InteropServices;
+using System.Text.Json;
 
 namespace Convention
 {
-    // 自定义异常类
     public class FileOperationException : Exception
     {
         public FileOperationException(string message) : base(message) { }
@@ -84,7 +79,6 @@ namespace Convention
                 )..];
         }
 
-        // 新增：获取文件名（对应 Python 的 GetFilename）
         public string GetFilename(bool is_without_extension = false)
         {
             if (is_without_extension && Path.HasExtension(FullPath))
@@ -101,25 +95,21 @@ namespace Convention
             }
         }
 
-        // 新增：获取目录路径（对应 Python 的 GetDir）
         public string GetDir()
         {
             return Path.GetDirectoryName(FullPath);
         }
 
-        // 新增：获取目录的 ToolFile 对象（对应 Python 的 GetDirToolFile）
         public ToolFile GetDirToolFile()
         {
             return new ToolFile(GetDir());
         }
 
-        // 新增：获取当前目录名（对应 Python 的 GetCurrentDirName）
         public string GetCurrentDirName()
         {
             return Path.GetDirectoryName(FullPath);
         }
 
-        // 新增：获取父目录（对应 Python 的 GetParentDir）
         public ToolFile GetParentDir()
         {
             return new ToolFile(GetDir());
@@ -185,7 +175,6 @@ namespace Convention
             return result;
         }
 
-        // 新增：加载为 CSV（使用 C# 内置功能）
         public List<string[]> LoadAsCsv()
         {
             if (IsFile() == false)
@@ -203,13 +192,11 @@ namespace Convention
             return result;
         }
 
-        // 新增：加载为 XML（使用 C# 内置功能）
         public string LoadAsXml()
         {
             return LoadAsText();
         }
 
-        // 新增：加载为 Excel（简化实现，实际需要第三方库）
         public string LoadAsExcel()
         {
             // 注意：真正的 Excel 读取需要第三方库如 EPPlus 或 NPOI
@@ -217,7 +204,6 @@ namespace Convention
             return LoadAsText();
         }
 
-        // 新增：加载为未知格式（对应 Python 的 LoadAsUnknown）
         public string LoadAsUnknown(string suffix)
         {
             return LoadAsText();
@@ -262,7 +248,6 @@ namespace Convention
             SaveDataAsBinary(FullPath, data, (OriginInfo as FileInfo).OpenWrite());
         }
 
-        // 新增：保存为 CSV（对应 Python 的 SaveAsCsv）
         public void SaveAsCsv(List<string[]> csvData)
         {
             if (IsFile() == false)
@@ -272,25 +257,21 @@ namespace Convention
             File.WriteAllLines(FullPath, lines);
         }
 
-        // 新增：保存为 XML（对应 Python 的 SaveAsXml）
         public void SaveAsXml(string xmlData)
         {
             SaveAsText(xmlData);
         }
 
-        // 新增：保存为 Excel（简化实现）
         public void SaveAsExcel(string excelData)
         {
             SaveAsText(excelData);
         }
 
-        // 新增：保存为数据框（对应 Python 的 SaveAsDataframe）
         public void SaveAsDataframe(List<string[]> dataframeData)
         {
             SaveAsCsv(dataframeData);
         }
 
-        // 新增：保存为未知格式（对应 Python 的 SaveAsUnknown）
         public void SaveAsUnknown(object unknownData)
         {
             if (unknownData is byte[] bytes)
@@ -328,7 +309,6 @@ namespace Convention
 
         #region Size and Properties
 
-        // 新增：获取文件大小（对应 Python 的 GetSize）
         public long GetSize()
         {
             if (IsDir())
@@ -376,7 +356,6 @@ namespace Convention
             return new ToolFile(Path.Combine(lp, rightPath));
         }
 
-        // 新增：相等比较（对应 Python 的 __eq__）
         public override bool Equals(object obj)
         {
             if (obj is ToolFile other)
@@ -447,7 +426,6 @@ namespace Convention
             return this;
         }
 
-        // 新增：复制方法重载（对应 Python 的 Copy）
         public ToolFile Copy(string targetPath = null)
         {
             if (targetPath == null)
@@ -495,7 +473,6 @@ namespace Convention
             return this;
         }
 
-        // 新增：Remove 方法（对应 Python 的 Remove）
         public ToolFile Remove()
         {
             return Delete();
@@ -567,7 +544,6 @@ namespace Convention
             return this;
         }
 
-        // 新增：MakeFileInside 方法（对应 Python 的 MakeFileInside）
         public ToolFile MakeFileInside(ToolFile data, bool is_delete_source = false)
         {
             if (!IsDir())
@@ -582,7 +558,6 @@ namespace Convention
             return this;
         }
 
-        // 新增：查找文件方法（对应 Python 的 FirstFileWithExtension）
         public ToolFile FirstFileWithExtension(string extension)
         {
             var targetDir = IsDir() ? this : GetDirToolFile();
@@ -596,7 +571,6 @@ namespace Convention
             return null;
         }
 
-        // 新增：查找文件方法（对应 Python 的 FirstFile）
         public ToolFile FirstFile(Func<string, bool> predicate)
         {
             var targetDir = IsDir() ? this : GetDirToolFile();
@@ -610,7 +584,6 @@ namespace Convention
             return null;
         }
 
-        // 新增：查找所有文件方法（对应 Python 的 FindFileWithExtension）
         public List<ToolFile> FindFileWithExtension(string extension)
         {
             var targetDir = IsDir() ? this : GetDirToolFile();
@@ -625,7 +598,6 @@ namespace Convention
             return result;
         }
 
-        // 新增：查找所有文件方法（对应 Python 的 FindFile）
         public List<ToolFile> FindFile(Func<string, bool> predicate)
         {
             var targetDir = IsDir() ? this : GetDirToolFile();
@@ -644,7 +616,6 @@ namespace Convention
 
         #region Compression
 
-        // 新增：压缩方法（对应 Python 的 Compress）
         public ToolFile Compress(string outputPath = null, string format = "zip")
         {
             if (!Exists())
@@ -684,7 +655,6 @@ namespace Convention
             }
         }
 
-        // 新增：解压方法（对应 Python 的 Decompress）
         public ToolFile Decompress(string outputPath = null)
         {
             if (!Exists() || !IsFile())
@@ -713,7 +683,6 @@ namespace Convention
 
         #region Encryption
 
-        // 新增：加密方法（对应 Python 的 Encrypt）
         public ToolFile Encrypt(string key, string algorithm = "AES")
         {
             if (!Exists() || !IsFile())
@@ -759,7 +728,6 @@ namespace Convention
             }
         }
 
-        // 新增：解密方法（对应 Python 的 decrypt）
         public ToolFile Decrypt(string key, string algorithm = "AES")
         {
             if (!Exists() || !IsFile())
@@ -813,7 +781,6 @@ namespace Convention
 
         #region Hash
 
-        // 新增：计算哈希值（对应 Python 的 calculate_hash）
         public string CalculateHash(string algorithm = "MD5", int chunkSize = 8192)
         {
             if (!Exists() || !IsFile())
@@ -846,14 +813,12 @@ namespace Convention
             };
         }
 
-        // 新增：验证哈希值（对应 Python 的 verify_hash）
         public bool VerifyHash(string expectedHash, string algorithm = "MD5")
         {
             string actualHash = CalculateHash(algorithm);
             return string.Equals(actualHash, expectedHash, StringComparison.OrdinalIgnoreCase);
         }
 
-        // 新增：保存哈希值（对应 Python 的 save_hash）
         public ToolFile SaveHash(string algorithm = "MD5", string outputPath = null)
         {
             string hash = CalculateHash(algorithm);
@@ -873,7 +838,6 @@ namespace Convention
 
         #region File Monitoring
 
-        // 新增：文件监控（简化实现，对应 Python 的 start_monitoring）
         public void StartMonitoring(Action<string, string> callback, bool recursive = false, 
             List<string> ignorePatterns = null, bool ignoreDirectories = false, 
             bool caseSensitive = true, bool isLog = true)
@@ -890,7 +854,7 @@ namespace Convention
             };
 
             watcher.Created += (sender, e) => callback("created", e.FullPath);
-            watcher.Modified += (sender, e) => callback("modified", e.FullPath);
+            watcher.Changed += (sender, e) => callback("modified", e.FullPath);
             watcher.Deleted += (sender, e) => callback("deleted", e.FullPath);
             watcher.Renamed += (sender, e) => callback("moved", e.FullPath);
         }
@@ -899,7 +863,6 @@ namespace Convention
 
         #region Backup
 
-        // 新增：创建备份（对应 Python 的 create_backup）
         public ToolFile CreateBackup(string backupDir = null, int maxBackups = 5, 
             string backupFormat = "zip", bool includeMetadata = true)
         {
@@ -956,7 +919,6 @@ namespace Convention
             }
         }
 
-        // 新增：恢复备份（对应 Python 的 restore_backup）
         public ToolFile RestoreBackup(string backupFile, string restorePath = null, bool verifyHash = true)
         {
             var backupToolFile = new ToolFile(backupFile);
@@ -987,7 +949,6 @@ namespace Convention
             }
         }
 
-        // 新增：列出备份（对应 Python 的 list_backups）
         public List<ToolFile> ListBackups(string backupDir = null)
         {
             if (backupDir == null)
@@ -1009,7 +970,6 @@ namespace Convention
 
         #region Permissions
 
-        // 新增：获取权限（对应 Python 的 get_permissions）
         public Dictionary<string, bool> GetPermissions()
         {
             if (!Exists())
@@ -1038,7 +998,6 @@ namespace Convention
             return permissions;
         }
 
-        // 新增：设置权限（对应 Python 的 set_permissions）
         public ToolFile SetPermissions(bool? read = null, bool? write = null, 
             bool? execute = null, bool? hidden = null, bool recursive = false)
         {
@@ -1084,7 +1043,6 @@ namespace Convention
             }
         }
 
-        // 新增：权限检查方法（对应 Python 的 is_readable, is_writable 等）
         public bool IsReadable()
         {
             try
@@ -1148,55 +1106,9 @@ namespace Convention
             var sourceFile = new ToolFile(source);
             return MakeFileInside(sourceFile, isDeleteSource);
         }
-        public static string[] SelectMultipleFiles(string filter = "所有文件|*.*", string title = "选择文件")
-        {
-            using var dialog = new OpenFileDialog
-            {
-                Filter = filter,
-                Title = title,
-                Multiselect = true
-            };
-            return dialog.ShowDialog() == DialogResult.OK ? dialog.FileNames : new string[0];
-        }
-        public static string SelectFile(string filter = "所有文件|*.*", string title = "选择文件")
-        {
-            using var dialog = new OpenFileDialog
-            {
-                Filter = filter,
-                Title = title
-            };
-            return dialog.ShowDialog() == DialogResult.OK ? dialog.FileName : null;
-        }
-        public static string SaveFile(string filter = "所有文件|*.*", string title = "保存文件")
-        {
-            using var dialog = new SaveFileDialog
-            {
-                Filter = filter,
-                Title = title
-            };
-            return dialog.ShowDialog() == DialogResult.OK ? dialog.FileName : null;
-        }
-        public static string SelectFolder(string description = "请选择文件夹")
-        {
-            using var dialog = new FolderBrowserDialog
-            {
-                Description = description
-            };
-            return dialog.ShowDialog() == DialogResult.OK ? dialog.SelectedPath : null;
-        }
         public DateTime GetTimestamp()
         {
             return (OriginInfo as FileInfo)?.LastWriteTime ?? DateTime.MinValue;
-        }
-        public static string BrowseFile(params string[] extensions)
-        {
-            string filter = string.Join("|", extensions.Select(ext => $"{ext.ToUpper()} 文件|*.{ext}"));
-            return SelectFile(filter);
-        }
-        public static ToolFile BrowseToolFile(params string[] extensions)
-        {
-            string path = BrowseFile(extensions);
-            return path != null ? new ToolFile(path) : null;
         }
 
         #endregion
