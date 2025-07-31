@@ -120,26 +120,6 @@ namespace Convention
 
     public static class Architecture
     {
-        public static string FormatType(Type type)
-        {
-            return type.Assembly + "::" + type.FullName;
-        }
-
-        public static Type LoadFromFormat(string data)
-        {
-            var keys = data.Split("::");
-            Assembly asm = null;
-            try
-            {
-                asm = Assembly.LoadFrom(keys[0]);
-                return asm.GetType(keys[1]);
-            }
-            catch
-            {
-                return null;
-            }
-        }
-
         public static Type LoadFromFormat(string data, out Exception exception)
         {
             exception = null;
@@ -227,7 +207,7 @@ namespace Convention
 
             public string Save()
             {
-                return $"{FormatType(registerSlot)}[{ConvertTo()}]";
+                throw new InvalidOperationException($"Cannt use {nameof(Registering)} to save type");
             }
         }
 
