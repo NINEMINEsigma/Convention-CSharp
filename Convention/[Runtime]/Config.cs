@@ -66,7 +66,7 @@ namespace Convention
         public static T ConvertValue<T>(string str)
         {
             Type type = typeof(T);
-            var parse_method = type.GetMethod("Parse");
+            var parse_method = type.GetMethod("Parse", BindingFlags.Static | BindingFlags.Public, null, new Type[] { typeof(string) }, null);
             if (parse_method != null &&
                 (parse_method.ReturnType.IsSubclassOf(type) || parse_method.ReturnType == type) &&
                 parse_method.GetParameters().Length == 1 &&
