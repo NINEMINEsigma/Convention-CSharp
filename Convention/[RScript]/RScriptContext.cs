@@ -1,8 +1,8 @@
-﻿using Convention.RScript.Parser;
+﻿using Convention.RScript.Matcher;
+using Convention.RScript.Parser;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text.RegularExpressions;
 
 namespace Convention.RScript
 {
@@ -35,15 +35,28 @@ namespace Convention.RScript
             /// </summary>
             Label,
             /// <summary>
-            /// 跳转到指定标签, 格式: goto(a,b,labelname)
-            /// <para>当a大于b时跳转到labelname</para>
+            /// 跳转到指定标签, 格式: goto(boolean,labelname)
+            /// <para>判断为真时跳转到labelname</para>
             /// </summary>
             Goto,
+            /// <summary>
+            /// 跳转到当前命名空间的结束位置, 格式: break(boolean);
+            /// </summary>
+            Breakpoint,
+            /// <summary>
+            /// 跳转到上次跳转的位置的后一个位置, 格式: back(boolean);
+            /// </summary>
+            Backpoint,
         }
 
         public string content;
         public List<string> info;
         public Mode mode;
+    }
+
+    public interface IRSentenceMatcher
+    {
+        bool Match(string expression, ref RScriptSentence sentence);
     }
 
     public partial class RScriptContext
@@ -54,7 +67,17 @@ namespace Convention.RScript
         private readonly Dictionary<string, int> Labels;
         private readonly Dictionary<int, int> Namespace;
 
-        private static RScriptSentence ParseToSentence(string expression)
+        public List<IRSentenceMatcher> SentenceParser = new()
+        {
+            new NamespaceMater(),
+            new DefineVariableMatcher(),
+            new LabelMatcher(),
+            new GotoMatcher(),
+            new BreakMatcher(),
+            new BackMatcher(),
+        };
+
+        private RScriptSentence ParseToSentence(string expression)
         {
             RScriptSentence result = new()
             {
@@ -63,45 +86,10 @@ namespace Convention.RScript
             };
             expression = expression.Trim();
             expression.TrimEnd(';');
-            if (expression == "{")
-            {
-                result.mode = RScriptSentence.Mode.EnterNamespace;
-            }
-            else if (expression == "}")
-            {
-                result.mode = RScriptSentence.Mode.ExitNamespace;
-            }
-
-            Regex DefineVariableRegex = new(@"^(string|int|double|float|bool|var)\s+([a-zA-Z_][a-zA-Z0-9_]*)$");
-            var DefineVariableMatch = DefineVariableRegex.Match(expression);
-            if (DefineVariableMatch.Success)
-            {
-                result.mode = RScriptSentence.Mode.DefineVariable;
-                result.info = new() { DefineVariableMatch.Groups[1].Value, DefineVariableMatch.Groups[2].Value };
-                return result;
-            }
-
-            Regex LabelRegex = new(@"^label\s*\(\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*\)$");
-            var LabelMatch = LabelRegex.Match(expression);
-            if (LabelMatch.Success)
-            {
-                result.mode = RScriptSentence.Mode.Label;
-                result.content = LabelMatch.Groups[1].Value;
-                return result;
-            }
-
-            Regex GotoRegex = new(@"^goto\s*\(\s*(.+)\s*,\s*(.*)\s*,([a-zA-Z_][a-zA-Z0-9_]*)\s*\)$");
-            var GotoMatch = GotoRegex.Match(expression);
-            if (GotoMatch.Success)
-            {
-                result.mode = RScriptSentence.Mode.Goto;
-                result.content = GotoMatch.Groups[3].Value;
-                result.info = new() { GotoMatch.Groups[1].Value, GotoMatch.Groups[2].Value, GotoMatch.Groups[3].Value };
-                return result;
-            }
-
+            SentenceParser.Any(matcher => matcher.Match(expression, ref result));
             return result;
         }
+
         private void BuildUpLabelsAndNamespace(ref Dictionary<string, int> labelIndicator, ref Dictionary<int, int> namespaceIndicator)
         {
             Stack<int> namespaceLayers = new();
@@ -142,6 +130,146 @@ namespace Convention.RScript
 
         public RScriptSentence CurrentSentence => Sentences[CurrentRuntimePointer];
 
+        private void DoDefineVariable(ExpressionParser parser, RScriptSentence sentence)
+        {
+            // 定义变量
+            var varTypeName = sentence.info[0];
+            var varName = sentence.info[1];
+            Type varType;
+            object varDefaultValue;
+            {
+                if (varTypeName == "string")
+                {
+                    varType = typeof(string);
+                    varDefaultValue = string.Empty;
+                }
+                else if (varTypeName == "int")
+                {
+                    varType = typeof(int);
+                    varDefaultValue = 0;
+                }
+                else if (varTypeName == "double")
+                {
+                    varType = typeof(double);
+                    varDefaultValue = 0.0;
+                }
+                else if (varTypeName == "float")
+                {
+                    varType = typeof(float);
+                    varDefaultValue = 0.0f;
+                }
+                else if (varTypeName == "bool")
+                {
+                    varType = typeof(bool);
+                    varDefaultValue = false;
+                }
+                else if (varTypeName == "var")
+                {
+                    varType = typeof(object);
+                    varDefaultValue = new object();
+                }
+                else
+                {
+                    throw new RScriptException($"Unsupported variable type '{varTypeName}'.", CurrentRuntimePointer);
+                }
+            }
+            if (CurrentLocalSpaceVariableNames.Peek().Contains(varName) == false)
+            {
+                Variables.Add(varName, new() { type = varType, data = varDefaultValue });
+                parser.context.Variables[varName] = varDefaultValue;
+                CurrentLocalSpaceVariableNames.Peek().Add(varName);
+            }
+            else
+            {
+                throw new RScriptException($"Variable '{varName}' already defined on this namespace.", CurrentRuntimePointer);
+            }
+        }
+
+        private void DoEnterNamespace(ExpressionParser parser)
+        {
+            // 准备记录当前命名空间中定义的变量, 清空上层命名空间的变量
+            CurrentLocalSpaceVariableNames.Push(new());
+            // 更新变量值
+            foreach (var (varName, varValue) in parser.context.Variables)
+            {
+                Variables.SetValue(varName, varValue);
+            }
+            // 压栈
+            RuntimePointerStack.Push(CurrentRuntimePointer);
+        }
+
+        private void DoExitNamespace(ExpressionParser parser)
+        {
+            // 移除在本命名空间中定义的变量
+            foreach (var local in CurrentLocalSpaceVariableNames.Peek())
+            {
+                Variables.Remove(local);
+                parser.context.Variables.Remove(local);
+            }
+            // 还原上层命名空间的变量
+            foreach (var local in CurrentLocalSpaceVariableNames.Peek())
+            {
+                parser.context.Variables[local] = Variables[local].data;
+            }
+            CurrentLocalSpaceVariableNames.Pop();
+            // 弹栈
+            RuntimePointerStack.Pop();
+        }
+
+        private void DoGoto(ExpressionParser parser, RScriptSentence sentence)
+        {
+            // 检查并跳转到指定标签
+            if (parser.Evaluate<bool>(sentence.info[0]))
+            {
+                if (Labels.TryGetValue(sentence.content, out var labelPointer))
+                {
+                    GotoPointerStack.Push(CurrentRuntimePointer);
+                    CurrentRuntimePointer = labelPointer;
+                }
+                else
+                {
+                    throw new RScriptException($"Label '{sentence.content}' not found.", CurrentRuntimePointer);
+                }
+            }
+        }
+
+        private void DoBreakpoint(ExpressionParser parser, RScriptSentence sentence)
+        {
+            // 检查并跳转到当前命名空间的结束位置
+            if (parser.Evaluate<bool>(sentence.content))
+            {
+                if (RuntimePointerStack.Count == 0)
+                {
+                    CurrentRuntimePointer = Sentences.Length;
+                }
+                else if (Namespace.TryGetValue(RuntimePointerStack.Peek(), out var exitPointer))
+                {
+                    CurrentRuntimePointer = exitPointer;
+                    DoExitNamespace(parser);
+                }
+                else
+                {
+                    throw new NotImplementedException($"No namespace to break.");
+                }
+            }
+        }
+
+        private void DoBackpoint(ExpressionParser parser, RScriptSentence sentence)
+        {
+            // 检查并跳转到上次跳转的位置的后一个位置
+            if (parser.Evaluate<bool>(sentence.content))
+            {
+                if (GotoPointerStack.Count == 0)
+                {
+                    throw new NotImplementedException($"No position to back.");
+                }
+                else
+                {
+                    CurrentRuntimePointer = GotoPointerStack.Pop() + 1;
+                }
+            }
+        }
+
         private void RunNextStep(ExpressionParser parser)
         {
             var sentence = CurrentSentence;
@@ -155,102 +283,32 @@ namespace Convention.RScript
                     break;
                 case RScriptSentence.Mode.DefineVariable:
                     {
-                        // 定义变量
-                        var varTypeName = sentence.info[0];
-                        var varName = sentence.info[1];
-                        Type varType;
-                        object varDefaultValue;
-                        {
-                            if (varTypeName == "string")
-                            {
-                                varType = typeof(string);
-                                varDefaultValue = string.Empty;
-                            }
-                            else if (varTypeName == "int")
-                            {
-                                varType = typeof(int);
-                                varDefaultValue = 0;
-                            }
-                            else if (varTypeName == "double")
-                            {
-                                varType = typeof(double);
-                                varDefaultValue = 0.0;
-                            }
-                            else if (varTypeName == "float")
-                            {
-                                varType = typeof(float);
-                                varDefaultValue = 0.0f;
-                            }
-                            else if (varTypeName == "bool")
-                            {
-                                varType = typeof(bool);
-                                varDefaultValue = false;
-                            }
-                            else if (varTypeName == "var")
-                            {
-                                varType = typeof(object);
-                                varDefaultValue = null;
-                            }
-                            else
-                            {
-                                throw new RScriptException($"Unsupported variable type '{varTypeName}'.", CurrentRuntimePointer);
-                            }
-                        }
-                        if (CurrentLocalSpaceVariableNames.Peek().Contains(varName) == false)
-                        {
-                            Variables.Add(varName, new() { type = varType, data = varDefaultValue });
-                            parser.context.Variables[varName] = varDefaultValue;
-                            CurrentLocalSpaceVariableNames.Peek().Add(varName);
-                        }
-                        else
-                        {
-                            throw new RScriptException($"Variable '{varName}' already defined on this namespace.", CurrentRuntimePointer);
-                        }
+                        DoDefineVariable(parser, sentence);
                     }
                     break;
                 case RScriptSentence.Mode.EnterNamespace:
                     {
-                        // 准备记录当前命名空间中定义的变量, 清空上层命名空间的变量
-                        CurrentLocalSpaceVariableNames.Push(new());
-                        // 更新变量值
-                        foreach (var (varName, varValue) in parser.context.Variables)
-                        {
-                            Variables.SetValue(varName, varValue);
-                        }
+                        DoEnterNamespace(parser);
                     }
                     break;
                 case RScriptSentence.Mode.ExitNamespace:
                     {
-                        // 移除在本命名空间中定义的变量
-                        foreach (var local in CurrentLocalSpaceVariableNames.Peek())
-                        {
-                            Variables.Remove(local);
-                            parser.context.Variables.Remove(local);
-                        }
-                        // 还原上层命名空间的变量
-                        foreach (var local in CurrentLocalSpaceVariableNames.Peek())
-                        {
-                            parser.context.Variables[local] = Variables[local].data;
-                        }
-                        CurrentLocalSpaceVariableNames.Pop();
+                        DoExitNamespace(parser);
                     }
                     break;
                 case RScriptSentence.Mode.Goto:
                     {
-                        // 检查并跳转到指定标签
-                        var leftValue = parser.Evaluate<double>(sentence.info[0]);
-                        var rightValue = parser.Evaluate<double>(sentence.info[1]);
-                        if (leftValue > rightValue)
-                        {
-                            if (Labels.TryGetValue(sentence.content, out var labelPointer))
-                            {
-                                CurrentRuntimePointer = labelPointer;
-                            }
-                            else
-                            {
-                                throw new RScriptException($"Label '{sentence.content}' not found.", CurrentRuntimePointer);
-                            }
-                        }
+                        DoGoto(parser, sentence);
+                    }
+                    break;
+                case RScriptSentence.Mode.Breakpoint:
+                    {
+                        DoBreakpoint(parser,sentence);
+                    }
+                    break;
+                case RScriptSentence.Mode.Backpoint:
+                    {
+                        DoBackpoint(parser, sentence);
                     }
                     break;
                 default:
@@ -260,6 +318,7 @@ namespace Convention.RScript
         }
 
         private readonly Stack<int> RuntimePointerStack = new();
+        private readonly Stack<int> GotoPointerStack = new();
         private int CurrentRuntimePointer = 0;
         private readonly Stack<HashSet<string>> CurrentLocalSpaceVariableNames = new();
 
@@ -267,6 +326,7 @@ namespace Convention.RScript
         {
             CurrentLocalSpaceVariableNames.Clear();
             RuntimePointerStack.Clear();
+            GotoPointerStack.Clear();
             CurrentLocalSpaceVariableNames.Clear();
             CurrentLocalSpaceVariableNames.Push(new());
             for (CurrentRuntimePointer = 0; CurrentRuntimePointer < Sentences.Length; CurrentRuntimePointer++)
