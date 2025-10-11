@@ -14,8 +14,8 @@ public class Program
         var result = engine.Run(@"
 double i;
 i = 2.0;
+label(test);
 {
-    label(test);
     goto(true,func1);
     goto(100>i,test);
 }
@@ -24,11 +24,11 @@ result = i;
 
 goto(true,end);
 
+label(func1);
 {
-    label(func1);
     i = Pow(i,2.0);
-    back(true);
 }
+back(true);
 
 label(end);
 ", import);

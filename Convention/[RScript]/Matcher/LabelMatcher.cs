@@ -6,7 +6,7 @@ namespace Convention.RScript.Matcher
     {
         public bool Match(string expression, ref RScriptSentence sentence)
         {
-            Regex LabelRegex = new(@"^label\s*\(\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*\)$");
+            Regex LabelRegex = new(@"label\s*\(\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*\)");
             var LabelMatch = LabelRegex.Match(expression);
             if (LabelMatch.Success)
             {

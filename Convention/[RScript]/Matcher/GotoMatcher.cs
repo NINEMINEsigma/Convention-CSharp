@@ -7,7 +7,7 @@ namespace Convention.RScript.Matcher
         public bool Match(string expression, ref RScriptSentence sentence)
         {
 
-            Regex GotoRegex = new(@"^goto\s*\(\s*(.+)\s*,\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*\)$");
+            Regex GotoRegex = new(@"goto\s*\(\s*(.+)\s*,\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*\)");
             var GotoMatch = GotoRegex.Match(expression);
             if (GotoMatch.Success)
             {

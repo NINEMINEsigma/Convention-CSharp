@@ -6,7 +6,7 @@ namespace Convention.RScript.Matcher
     {
         public bool Match(string expression, ref RScriptSentence sentence)
         {
-            Regex DefineVariableRegex = new(@"^(string|int|double|float|bool|var)\s+([a-zA-Z_][a-zA-Z0-9_]*)$");
+            Regex DefineVariableRegex = new(@"(string|int|double|float|bool|var)\s+([a-zA-Z_][a-zA-Z0-9_]*)");
             var DefineVariableMatch = DefineVariableRegex.Match(expression);
             if (DefineVariableMatch.Success)
             {

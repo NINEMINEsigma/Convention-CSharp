@@ -200,7 +200,7 @@ namespace Convention.RScript
 
         private void DoExitNamespace(ExpressionParser parser)
         {
-            // 移除在本命名空间中定义的变量
+            // 移除当前命名空间的变量
             foreach (var local in CurrentLocalSpaceVariableNames.Peek())
             {
                 Variables.Remove(local);
@@ -216,6 +216,29 @@ namespace Convention.RScript
             RuntimePointerStack.Pop();
         }
 
+        private void DoJumpRuntimePointer(ExpressionParser parser, int target)
+        {
+            bool isForwardMove = target > CurrentRuntimePointer;
+            int step = isForwardMove ? 1 : -1;
+            for (; CurrentRuntimePointer != target; CurrentRuntimePointer += step)
+            {
+                if (CurrentSentence.mode == RScriptSentence.Mode.ExitNamespace)
+                {
+                    if (isForwardMove)
+                        DoExitNamespace(parser);
+                    else
+                        DoEnterNamespace(parser);
+                }
+                else if (CurrentSentence.mode == RScriptSentence.Mode.EnterNamespace)
+                {
+                    if (isForwardMove)
+                        DoEnterNamespace(parser);
+                    else
+                        DoExitNamespace(parser);
+                }
+            }
+        }
+
         private void DoGoto(ExpressionParser parser, RScriptSentence sentence)
         {
             // 检查并跳转到指定标签
@@ -224,7 +247,7 @@ namespace Convention.RScript
                 if (Labels.TryGetValue(sentence.content, out var labelPointer))
                 {
                     GotoPointerStack.Push(CurrentRuntimePointer);
-                    CurrentRuntimePointer = labelPointer;
+                    DoJumpRuntimePointer(parser, labelPointer);
                 }
                 else
                 {
@@ -256,7 +279,7 @@ namespace Convention.RScript
 
         private void DoBackpoint(ExpressionParser parser, RScriptSentence sentence)
         {
-            // 检查并跳转到上次跳转的位置的后一个位置
+            // 检查并跳转到上次跳转的位置
             if (parser.Evaluate<bool>(sentence.content))
             {
                 if (GotoPointerStack.Count == 0)
@@ -265,7 +288,7 @@ namespace Convention.RScript
                 }
                 else
                 {
-                    CurrentRuntimePointer = GotoPointerStack.Pop() + 1;
+                    DoJumpRuntimePointer(parser, GotoPointerStack.Pop());
                 }
             }
         }
