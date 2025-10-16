@@ -23,14 +23,17 @@ public class Program
         };
         var result = engine.Run(@"
 int i= 2;
+int count = 0;
 label(test);
 goto(true,func1);
+Func(i);
 goto(100>i,test);
 
 namespace(func1)
 {
     i = Pow(i,2);
-    Func(i);
+    count = count + 1;
+    Func(count);
 }
 ", import);
         Console.WriteLine($"Script executed successfully. Result: {result["i"].data}");
