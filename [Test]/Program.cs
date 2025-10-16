@@ -1,5 +1,4 @@
 ﻿using Convention.RScript;
-using Flee.PublicTypes;
 using System;
 
 public class Program
@@ -9,11 +8,13 @@ public class Program
         RScriptEngine engine = new();
         RScriptImportClass import = new()
         {
-            typeof(Math)
+            typeof(Math),
+           
         };
+        import.Add(typeof(ExpressionMath));
         var result = engine.Run(@"
-double i;
-i = 2.0;
+int i;
+i = 2.2;
 label(test);
 goto(true,func1);
 goto(100>i,test);
