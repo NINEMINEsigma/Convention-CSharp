@@ -29,12 +29,20 @@ goto(true,func1);
 Func(i);
 goto(100>i,test);
 
+goto(context.ExistNamespace(""x""),end);
+namespace(x)
+{
+    Func(""xxx"");
+}
+
 namespace(func1)
 {
     i = Pow(i,2);
     count = count + 1;
     Func(count);
 }
+
+label(end);
 ", import);
         Console.WriteLine($"Script executed successfully. Result: {result["i"].data}");
     }
