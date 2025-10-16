@@ -22,8 +22,7 @@ public class Program
             typeof(Test)
         };
         var result = engine.Run(@"
-int i;
-i = 2;
+int i= 2;
 label(test);
 goto(true,func1);
 goto(100>i,test);
