@@ -161,18 +161,7 @@ namespace Convention
         {
             if (IsFile() == false)
                 throw new InvalidOperationException("Target is not a file");
-            var file = this.OriginInfo as FileInfo;
-            const int BlockSize = 1024;
-            long FileSize = file.Length;
-            byte[] result = new byte[FileSize];
-            long offset = 0;
-            using (var fs = file.OpenRead())
-            {
-                fs.ReadAsync(result[(int)(offset)..(int)(offset + BlockSize)], 0, (int)(offset + BlockSize) - (int)(offset));
-                offset += BlockSize;
-                offset = System.Math.Min(offset, FileSize);
-            }
-            return result;
+            return File.ReadAllBytes(FullPath);
         }
 
         public List<string[]> LoadAsCsv()
@@ -245,7 +234,7 @@ namespace Convention
 
         public void SaveAsBinary(byte[] data)
         {
-            SaveDataAsBinary(FullPath, data, (OriginInfo as FileInfo).OpenWrite());
+            File.WriteAllBytes(FullPath, data);
         }
 
         public void SaveAsCsv(List<string[]> csvData)
@@ -1113,4 +1102,32 @@ namespace Convention
 
         #endregion
     }
+
+#if ENABLE_UNSAFE
+
+    public static class UnsafeBinarySerializer
+    {
+        public static unsafe byte[] StructToBytes<T>(T structure) where T : unmanaged
+        {
+            int size = sizeof(T);
+            byte[] bytes = new byte[size];
+
+            fixed (byte* ptr = bytes)
+            {
+                *(T*)ptr = structure;
+            }
+
+            return bytes;
+        }
+
+        public static unsafe T BytesToStruct<T>(byte[] bytes) where T : unmanaged
+        {
+            fixed (byte* ptr = bytes)
+            {
+                return *(T*)ptr;
+            }
+        }
+    }
+
+#endif
 }
