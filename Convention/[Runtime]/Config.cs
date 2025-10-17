@@ -1,12 +1,13 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
-using System.Text;
+using System.Runtime.Serialization;
 using System.Threading;
-using System.Threading.Tasks;
+using System.Xml;
 
 namespace Convention
 {
@@ -78,6 +79,39 @@ namespace Convention
             throw new InvalidCastException($"\"{str}\" is cannt convert to type<{type}>");
         }
 
+
+        /// <summary>
+        /// 序列化
+        /// </summary>
+        /// <param name="obj"></param>
+        /// <returns></returns>
+        public static byte[] Serialize<T>(T obj)
+        {
+            ArgumentNullException.ThrowIfNull(obj);
+
+            using var memoryStream = new MemoryStream();
+            DataContractSerializer ser = new DataContractSerializer(typeof(T));
+            ser.WriteObject(memoryStream, obj);
+            var data = memoryStream.ToArray();
+            return data;
+        }
+
+        /// <summary>
+        /// 反序列化
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="data"></param>
+        /// <returns></returns>
+        public static T Deserialize<T>(byte[] data)
+        {
+            ArgumentNullException.ThrowIfNull(data);
+
+            using var memoryStream = new MemoryStream(data);
+            XmlDictionaryReader reader = XmlDictionaryReader.CreateTextReader(memoryStream, new XmlDictionaryReaderQuotas());
+            DataContractSerializer ser = new DataContractSerializer(typeof(T));
+            var result = (T)ser.ReadObject(reader, true);
+            return result;
+        }
 
         public static object SeekValue(object obj, string name, BindingFlags flags, out bool isSucceed)
         {
@@ -408,6 +442,26 @@ namespace Convention
         public static string NowFormat(string format = "yyyy-MM-dd_HH-mm-ss")
         {
             return DateTime.Now.ToString(format);
+        }
+
+        public class EnumerableClass : IEnumerable
+        {
+            private readonly IEnumerator ir;
+
+            public EnumerableClass(IEnumerator ir)
+            {
+                this.ir = ir;
+            }
+
+            public IEnumerator GetEnumerator()
+            {
+                return ir;
+            }
+        }
+
+        public static IEnumerable AsEnumerable(this IEnumerator ir)
+        {
+            return new EnumerableClass(ir);
         }
     }
 }

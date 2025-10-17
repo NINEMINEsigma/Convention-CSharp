@@ -1,5 +1,8 @@
-﻿using Convention.RScript;
+﻿using Convention;
+using Convention.EasySave;
+using Convention.RScript;
 using System;
+using System.IO;
 
 public class Program
 {
@@ -21,7 +24,9 @@ public class Program
             typeof(ExpressionMath),
             typeof(Test)
         };
-        var result = engine.Run(@"
+
+        /*
+        var result = engine.Compile(@"
 int i= 2;
 int count = 0;
 label(test);
@@ -44,6 +49,8 @@ namespace(func1)
 
 label(end);
 ", import);
-        Console.WriteLine($"Script executed successfully. Result: {result["i"].data}");
+        */
+        //EasySave.Save("data", result, "F:\\test.json");
+        var result = engine.Run(EasySave.Load<RScriptContext.SerializableClass>("data", "F:\\test.json"), import);
     }
 }
