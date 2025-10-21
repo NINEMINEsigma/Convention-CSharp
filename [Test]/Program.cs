@@ -50,9 +50,13 @@ namespace(func1)
 label(end);
 ", import);
         var data = RScriptSerializer.SerializeClass(result);
-        var file = new ToolFile("F:\\test.dat");
+        var file = new ToolFile("F:\\test_after_run.dat");
         file.SaveAsBinary(data);
         data = file.LoadAsBinary();
         engine.Run(RScriptSerializer.DeserializeClass(data), import);
+        return;
+        var data2 = RScriptSerializer.SerializeClass(engine.GetCompileResultFromCurrent());
+        var file2 = new ToolFile("F:\\test_after_run.dat");
+        file2.SaveAsBinary(data2);
     }
 }
