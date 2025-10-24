@@ -1,6 +1,8 @@
 [submodule "Convention/[FLEE]"]
 	path = Convention/[FLEE]
 	url = http://www.liubai.site:3000/ninemine/Flee.git
+	branch = main
 [submodule "Convention/[RScript]"]
 	path = Convention/[RScript]
 	url = http://www.liubai.site:3000/ninemine/RScript.git
+	branch = main
